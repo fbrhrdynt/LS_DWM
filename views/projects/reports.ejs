@@ -34,7 +34,7 @@
         <tbody>
           <% reports.forEach(report => { %>
             <tr>
-              <td><%= report.urut || '-' %></td>
+              <td><%= formatReportNo(report.urut, '-') %></td>
               <td><%= report.curdate || '-' %></td>
               <td><%= report.wellname || '-' %></td>
               <td><%= report.location || '-' %></td>

@@ -223,3 +223,15 @@ Key layout parity:
 - Oil/Mud Recovery and Engineers remain at the bottom of the Retort table
 
 Excel Well Summary is unchanged from v0.6.
+
+
+## v0.6.2 PDF parity and branding
+
+- Daily Report PDF layout tightened to mirror the legacy Laravel/DomPDF report.
+- Top Well Information and Active Mud rows use the original borderless layout.
+- Centrifuge/Shaker and Retort headers restore the original rowspan-style structure.
+- Global Settings menu can upload the left-side company logo and edit all three report header lines.
+- Client logo on the right side can be uploaded per project from Settings or Project Edit.
+- Report numbers are always rendered as whole numbers (`3`, never `3.0`).
+- Copy Report uses the source report date + 1 calendar day.
+- Copied report's `details.datenow` also follows the new report date.

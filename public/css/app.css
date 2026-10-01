@@ -781,3 +781,70 @@ html[data-theme="dark"] .retort-recovery-grid input { border-color: #36404b; }
     text-align: center;
   }
 }
+
+
+/* v0.6.2 PDF branding settings */
+.logo-settings-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+}
+.logo-settings-preview img {
+  display: block;
+  width: auto;
+  max-width: 190px;
+  height: auto;
+  max-height: 64px;
+  object-fit: contain;
+}
+.inline-check {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+}
+.inline-check input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+}
+.client-logo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.client-logo-grid article {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.client-logo-grid img {
+  width: 58px;
+  height: 42px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.client-logo-grid div {
+  min-width: 0;
+}
+.client-logo-grid strong,
+.client-logo-grid span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.client-logo-grid span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}

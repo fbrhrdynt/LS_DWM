@@ -45,3 +45,15 @@ Improvements over the legacy mapping:
 - No browser-side Excel library is loaded.
 
 Both export types apply normal project authorization before any file is generated.
+
+
+## v0.6.2 report branding
+
+The Daily Report PDF header is now configurable from `Settings -> PDF report settings`.
+
+- Left logo: global Our Company logo.
+- Center: report title template plus two configurable text lines.
+- Right logo: project/client logo.
+- `{report_no}` in the title template is replaced with a whole-number report number.
+
+Copying a report now advances the date by one calendar day from the source report.

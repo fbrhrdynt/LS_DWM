@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
+import { getReportSettings, buildReportTitle } from './report-settings.service.js';
+import { formatReportNumber } from './report-sequence.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -192,53 +194,82 @@ function tryImage(doc, candidates, x, y, width, height) {
   return false;
 }
 
+
+function storedUploadCandidate(relativePath) {
+  if (!relativePath) return null;
+  const normalized = String(relativePath).replaceAll('\\', '/').replace(/^\/+/, '');
+  const root = path.resolve(rootDir, 'storage', 'uploads');
+  const absolute = path.resolve(root, normalized);
+  if (absolute !== root && !absolute.startsWith(root + path.sep)) return null;
+  return absolute;
+}
+
+function tryImageCentered(doc, candidates, boxX, boxY, boxWidth, boxHeight, maxWidth, maxHeight) {
+  const targetWidth = Math.min(boxWidth, maxWidth || boxWidth);
+  const targetHeight = Math.min(boxHeight, maxHeight || boxHeight);
+  const x = boxX + (boxWidth - targetWidth) / 2;
+  const y = boxY + (boxHeight - targetHeight) / 2;
+  return tryImage(doc, candidates, x, y, targetWidth, targetHeight);
+}
+
 function drawHeader(doc, data, x, y, width) {
   const { project, report } = data;
+  const settings = getReportSettings();
+  const reportNo = formatReportNumber(report.urut, report.id_wellinfo);
+  const title = buildReportTitle(settings, reportNo);
+
   const leftW = width * 0.25;
   const centerW = width * 0.50;
   const rightW = width * 0.25;
   const h = 47;
 
-  cell(doc, x, y, leftW, h, '', { border: false });
-  const stepLogo = tryImage(doc, [
+  const companyStored = storedUploadCandidate(settings.company_logo);
+  const companyLogo = tryImageCentered(doc, [
+    companyStored,
     process.env.DWM_REPORT_LOGO,
-    'public/stepoil_logo.jpeg',
-    'storage/branding/stepoil_logo.jpeg'
-  ], x + 3, y + 5, leftW - 6, h - 10);
+    'public/stepoil_logo.jpeg'
+  ], x, y, leftW, h, 112, 35);
 
-  if (!stepLogo) {
+  if (!companyLogo) {
     doc.fillColor(GREEN).font('Helvetica-Bold').fontSize(10)
-      .text('STEP OIL TOOLS', x + 5, y + 17, { width: leftW - 10, align: 'center' });
+      .text('OUR COMPANY', x + 5, y + 17, { width: leftW - 10, align: 'center' });
   }
 
   doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(13)
-    .text(`DWM DAILY REPORT NO. ${val(report.urut, report.id_wellinfo)}`, x + leftW, y + 5, {
+    .text(title, x + leftW, y + 4, {
       width: centerW,
-      align: 'center'
+      align: 'center',
+      height: 17,
+      ellipsis: true
     });
 
-  doc.font('Helvetica').fontSize(7)
-    .text('PT Step Oiltools, Graha Inti Fauzi 12th Floor', x + leftW, y + 23, {
+  doc.font('Helvetica').fontSize(6.8)
+    .text(val(settings.company_header_line_1, ''), x + leftW, y + 22, {
       width: centerW,
-      align: 'center'
+      align: 'center',
+      height: 9,
+      ellipsis: true
     })
-    .text('Jl. Buncit Raya No. 22 Jakarta 12510 - Indonesia Tel: +62 21 7943352', x + leftW, y + 32, {
+    .text(val(settings.company_header_line_2, ''), x + leftW, y + 31, {
       width: centerW,
-      align: 'center'
+      align: 'center',
+      height: 9,
+      ellipsis: true
     });
 
   const projectLogoName = project.logo ? String(project.logo) : '';
-  const projectLogo = tryImage(doc, [
-    projectLogoName && `public/isi/logos/${projectLogoName}`,
-    projectLogoName && `storage/uploads/project-logos/${projectLogoName}`,
-    projectLogoName
-  ], x + leftW + centerW + 7, y + 7, rightW - 14, h - 14);
+  const projectStored = storedUploadCandidate(projectLogoName);
+  const projectLogo = tryImageCentered(doc, [
+    projectStored,
+    projectLogoName && `public/isi/logos/${path.basename(projectLogoName)}`
+  ], x + leftW + centerW, y, rightW, h, 68, 32);
 
   if (!projectLogo) {
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(7)
       .text(val(project.operator_name), x + leftW + centerW + 5, y + 18, {
         width: rightW - 10,
-        align: 'center'
+        align: 'center',
+        ellipsis: true
       });
   }
 
@@ -247,7 +278,6 @@ function drawHeader(doc, data, x, y, width) {
 
 function drawWellInfo(doc, data, x, y, width) {
   const { project, report, details } = data;
-  const unit = val(details.depth_each, 'feet');
   const rows = [
     ['Operator', project.operator_name, 'Depth (ft)', details.curdepth, 'feet', 'Date', dateText(report.curdate)],
     ['Well Name', report.wellname, 'Depth 1 Day Before', details.depth1bef, 'feet', 'Spud-in Date', dateText(report.spud_date)],
@@ -259,16 +289,16 @@ function drawWellInfo(doc, data, x, y, width) {
 
   for (const r of rows) {
     y = row(doc, x, y, width, [
-      textCell(r[0], 15, { align: 'right', bold: true }),
-      textCell(`: ${val(r[1])}`, 16),
-      textCell('', 2),
-      textCell(r[2], 12, { align: 'right', bold: true }),
-      textCell(`: ${val(r[3])}`, 10),
-      textCell(r[4], 5),
-      textCell('', 2),
-      textCell(r[5], 12, { align: 'right', bold: true }),
-      textCell(`: ${val(r[6])}`, 10),
-      textCell('', 6)
+      textCell(r[0], 15, { align: 'right', bold: true, border: false }),
+      textCell(`: ${val(r[1])}`, 16, { border: false }),
+      textCell('', 2, { border: false }),
+      textCell(r[2], 12, { align: 'right', bold: true, border: false }),
+      textCell(`: ${val(r[3])}`, 10, { border: false }),
+      textCell(r[4], 5, { border: false }),
+      textCell('', 2, { border: false }),
+      textCell(r[5], 12, { align: 'right', bold: true, border: false }),
+      textCell(`: ${val(r[6])}`, 10, { border: false }),
+      textCell('', 6, { border: false })
     ], { height: 10.2, fontSize: 5.05 });
   }
 
@@ -283,7 +313,7 @@ function drawActiveMud(doc, data, x, y, width) {
   const result2 = water ? d.basefluid : d.categories2;
 
   y = row(doc, x, y, width, [
-    greenCell('A C T I V E   M U D   P R O P E R T I E S', 100, { fontSize: 6.1 })
+    greenCell('A C T I V E   M U D   P R O P E R T I E S', 100, { fontSize: 6.1, border: false })
   ], { height: 11 });
 
   const rows = [
@@ -306,8 +336,8 @@ function drawActiveMud(doc, data, x, y, width) {
   for (const r of rows) {
     const cells = [];
     for (let i = 0; i < r.length; i += 2) {
-      cells.push(textCell(r[i], 10, { align: 'right' }));
-      cells.push(textCell(`: ${val(r[i + 1])}`, 10));
+      cells.push(textCell(r[i], 10, { align: 'right', border: false }));
+      cells.push(textCell(`: ${val(r[i + 1])}`, 10, { border: false }));
     }
     y = row(doc, x, y, width, cells, { height: 10, fontSize: 4.95 });
   }
@@ -320,24 +350,43 @@ function drawEquipment(doc, data, x, y, width) {
   const ds = data.desander;
   const di = data.desilter;
 
-  y = row(doc, x, y, width, [
-    greenCell('C E N T R I F U G E S', 24.2),
-    greenCell('Centrifuge 1', 9.2),
-    greenCell('Centrifuge 2', 9.2),
-    greenCell('Centrifuge 3', 10),
-    greenCell('SHALE SHAKERS & SCREENS', 42.4)
-  ], { height: 10 });
+  {
+    const h = 10;
+    const widths = pctWidths(width, [24.2, 9.2, 9.2, 10, 10, 15, 15, 7.4]);
+    let cx = x;
 
-  y = row(doc, x, y, width, [
-    greenCell('', 24.2),
-    greenCell(d.cf1_sn, 9.2),
-    greenCell(d.cf2_sn, 9.2),
-    greenCell(d.cf3_sn, 10),
-    greenCell('Shakers', 10),
-    greenCell('Model (Type)', 15),
-    greenCell('Screen Size', 15),
-    greenCell('Running Hrs', 7.4)
-  ], { height: 10 });
+    cell(doc, cx, y, widths[0], h * 2, 'C E N T R I F U G E S', {
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.4
+    });
+    cx += widths[0];
+
+    cell(doc, cx, y, widths[1], h, 'Centrifuge 1', { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.2 });
+    cell(doc, cx, y + h, widths[1], h, d.cf1_sn, { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.0 });
+    cx += widths[1];
+
+    cell(doc, cx, y, widths[2], h, 'Centrifuge 2', { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.2 });
+    cell(doc, cx, y + h, widths[2], h, d.cf2_sn, { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.0 });
+    cx += widths[2];
+
+    cell(doc, cx, y, widths[3], h, 'Centrifuge 3', { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.2 });
+    cell(doc, cx, y + h, widths[3], h, d.cf3_sn, { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.0 });
+    cx += widths[3];
+
+    const shakerGroupW = widths[4] + widths[5] + widths[6];
+    cell(doc, cx, y, shakerGroupW, h, 'SHALE SHAKERS & SCREENS', {
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.2
+    });
+    cell(doc, cx, y + h, widths[4], h, 'Shakers', { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.0 });
+    cell(doc, cx + widths[4], y + h, widths[5], h, 'Model (Type)', { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.0 });
+    cell(doc, cx + widths[4] + widths[5], y + h, widths[6], h, 'Screen Size', { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.0 });
+    cx += shakerGroupW;
+
+    cell(doc, cx, y, widths[7], h * 2, 'Running\nHrs', {
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.8
+    });
+
+    y += h * 2;
+  }
 
   const shakerRows = [
     ['Serial Number', '', d.cf1_sn, d.cf2_sn, d.cf3_sn, d.sh1_name, d.sh1_model, d.sh1_screensize, d.sh1_runninghour],
@@ -421,32 +470,46 @@ function drawOocChart(doc, retort, x, y, width, height) {
     numeric(retort.rt_cf1_ooc),
     numeric(retort.rt_cf2_ooc),
     numeric(retort.rt_cf3_ooc)
-  ].map(v => Math.max(0, Math.min(100, v)));
+  ].map(v => Math.max(0, v));
 
-  const chartX = x + 13;
-  const chartY = y + 13;
-  const chartW = width - 22;
-  const chartH = height - 29;
+  const maximum = Math.max(...values, 0);
+  let tickStep;
+  if (maximum <= 20) tickStep = 2;
+  else if (maximum <= 50) tickStep = 5;
+  else tickStep = 10;
+
+  const yMax = maximum <= 0
+    ? 10
+    : Math.max(tickStep, Math.ceil(maximum / tickStep) * tickStep);
+
+  const chartX = x + 15;
+  const chartY = y + 18;
+  const chartW = width - 24;
+  const chartH = height - 34;
   const baseY = chartY + chartH;
 
-  doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(5.3)
-    .text('% Oil-on-Cuttings', x + 2, y + 3, { width: width - 4, align: 'center' });
+  const legendText = '% Oil-on-Cuttings';
+  const legendW = 8;
+  const legendX = x + width / 2 - 31;
+  doc.save().rect(legendX, y + 5, legendW, 4).fill(GREEN).restore();
+  doc.fillColor(GREY).font('Helvetica').fontSize(3.8)
+    .text(legendText, legendX + 11, y + 3.6, { width: 55, align: 'left' });
 
   doc.save()
-    .strokeColor(BORDER)
-    .lineWidth(0.35)
+    .strokeColor('#c8c8c8')
+    .lineWidth(0.25)
     .moveTo(chartX, chartY)
     .lineTo(chartX, baseY)
     .lineTo(chartX + chartW, baseY)
     .stroke()
     .restore();
 
-  for (let t = 0; t <= 100; t += 20) {
-    const ty = baseY - chartH * (t / 100);
-    doc.fillColor(GREY).font('Helvetica').fontSize(3.7)
-      .text(String(t), x + 1, ty - 2, { width: 10, align: 'right' });
+  for (let t = 0; t <= yMax; t += tickStep) {
+    const ty = baseY - chartH * (t / yMax);
+    doc.fillColor(GREY).font('Helvetica').fontSize(3.6)
+      .text(String(t), x + 1, ty - 2, { width: 11, align: 'right' });
     doc.save()
-      .strokeColor('#dddddd')
+      .strokeColor('#e0e0e0')
       .lineWidth(0.2)
       .moveTo(chartX, ty)
       .lineTo(chartX + chartW, ty)
@@ -459,14 +522,17 @@ function drawOocChart(doc, retort, x, y, width, height) {
 
   values.forEach((v, i) => {
     const bx = chartX + barGap + i * (barW + barGap);
-    const bh = chartH * (v / 100);
+    const bh = chartH * (Math.min(v, yMax) / yMax);
     const by = baseY - bh;
 
-    doc.save().rect(bx, by, barW, bh).fill(GREEN).restore();
-    doc.fillColor(BLACK).font('Helvetica').fontSize(3.6)
-      .text(v.toFixed(1), bx - 1, by - 5, { width: barW + 2, align: 'center' });
-    doc.fillColor(BLACK).fontSize(3.4)
-      .text(labels[i], bx - 4, baseY + 2, { width: barW + 8, align: 'center' });
+    if (bh > 0) {
+      doc.save().rect(bx, by, barW, bh).fill(GREEN).restore();
+    }
+
+    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(3.6)
+      .text(v.toFixed(2), bx - 2, Math.max(chartY, by - 5), { width: barW + 4, align: 'center' });
+    doc.fillColor(GREY).font('Helvetica').fontSize(3.2)
+      .text(labels[i], bx - 5, baseY + 2, { width: barW + 10, align: 'center' });
   });
 }
 
@@ -484,27 +550,64 @@ function drawRetort(doc, data, x, y, width) {
   const rightW = width - leftW;
   const rightX = x + leftW;
 
-  y = row(doc, x, y, width, [
-    greenCell('RETORT WORKSHEET\n& VOLUME DISCHARGE', 25),
-    greenCell('Shakers\nOverflow', 9.5),
-    greenCell('Dryer', 9.5),
-    greenCell('Centrifuge 1', 9.5),
-    greenCell('Centrifuge 2', 9.5),
-    greenCell('Centrifuge 3', 9.2),
-    greenCell('Cuttings By-Passed (to Overboard)', 27.8)
-  ], { height: 14, fontSize: 4.8 });
+  {
+    const h = 10;
+    const widths = pctWidths(width, [19.5, 5.5, 9.5, 9.5, 9.2, 9.5, 9.5, 13.9, 13.9]);
+    let cx = x;
+
+    cell(doc, cx, y, widths[0], h * 2, 'RETORT WORKSHEET\n& VOLUME DISCHARGE', {
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.7
+    });
+    cx += widths[0];
+
+    cell(doc, cx, y, widths[1], h * 2, '', { fill: GREEN, color: WHITE });
+    cx += widths[1];
+
+    cell(doc, cx, y, widths[2], h * 2, 'Shakers\nOverflow', {
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.7
+    });
+    cx += widths[2];
+
+    cell(doc, cx, y, widths[3], h * 2, 'Dryer', {
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.8
+    });
+    cx += widths[3];
+
+    for (const [title, serial, w] of [
+      ['Centrifuge 1', d.cf1_sn, widths[4]],
+      ['Centrifuge 2', d.cf2_sn, widths[5]],
+      ['Centrifuge 3', d.cf3_sn, widths[6]]
+    ]) {
+      cell(doc, cx, y, w, h, title, { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.7 });
+      cell(doc, cx, y + h, w, h, serial, { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.6 });
+      cx += w;
+    }
+
+    const cuttingsW = widths[7] + widths[8];
+    cell(doc, cx, y, cuttingsW, h, 'Cuttings By-Passed (to Overboard)', {
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.7
+    });
+    cell(doc, cx, y + h, widths[7], h, `Percentage(%) : ${val(c.percentage)}`, {
+      fontSize: 4.2, align: 'left'
+    });
+    cell(doc, cx + widths[7], y + h, widths[8], h, `from depth : ${val(c.from_depth)} ${val(c.each_from_depth, '')}`, {
+      fontSize: 4.2, align: 'left'
+    });
+
+    y += h * 2;
+  }
 
   y = row(doc, x, y, width, [
     textCell('Type/Model', 19.5),
     textCell('', 5.5),
     textCell(d.sh1_model, 9.5, { align: 'center' }),
     textCell(d.cdu1_model, 9.5, { align: 'center' }),
-    textCell(d.cf1_model, 9.5, { align: 'center' }),
+    textCell(d.cf1_model, 9.2, { align: 'center' }),
     textCell(d.cf2_model, 9.5, { align: 'center' }),
-    textCell(d.cf3_model, 9.2, { align: 'center' }),
-    textCell(`Percentage(%) : ${val(c.percentage)}\nVolume (bbls) : ${val(c.volume)}`, 13.9, { fontSize: 4.2 }),
-    textCell(`from depth : ${val(c.from_depth)} ${val(c.each_from_depth, '')}\nto depth : ${val(c.to_depth)} ${val(c.each_to_depth, '')}`, 13.9, { fontSize: 4.2 })
-  ], { height: 13, fontSize: 4.6 });
+    textCell(d.cf3_model, 9.5, { align: 'center' }),
+    textCell(`Volume (bbls) : ${val(c.volume)}`, 13.9, { fontSize: 4.2 }),
+    textCell(`to depth : ${val(c.to_depth)} ${val(c.each_to_depth, '')}`, 13.9, { fontSize: 4.2 })
+  ], { height: 10, fontSize: 4.6 });
 
   const leftWidths = [19.5, 5.5, 9.5, 9.5, 9.2, 9.5, 9.5];
   const rowsTop = [
@@ -688,7 +791,7 @@ export function pipeDailyReportPdf(res, data) {
     compress: true,
     bufferPages: true,
     info: {
-      Title: `DWM Daily Report ${val(data.report.urut, data.report.id_wellinfo)}`,
+      Title: `DWM Daily Report ${formatReportNumber(data.report.urut, data.report.id_wellinfo)}`,
       Author: 'DWM'
     }
   });

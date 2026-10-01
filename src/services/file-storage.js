@@ -11,6 +11,7 @@ export const uploadRoot = path.join(rootDir, 'storage', 'uploads');
 
 const allowedDocumentExtensions = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']);
 const allowedCertificateExtensions = new Set(['.pdf', '.doc', '.docx']);
+const allowedImageExtensions = new Set(['.png', '.jpg', '.jpeg']);
 
 fs.mkdirSync(uploadRoot, { recursive: true });
 
@@ -50,6 +51,8 @@ function uploadFactory(folder, { limitMb, extensions }) {
 export const uploadCoc = uploadFactory('coc', { limitMb: 5, extensions: allowedCertificateExtensions });
 export const uploadInspection = uploadFactory('inspection', { limitMb: 5, extensions: allowedCertificateExtensions });
 export const uploadPmDocument = uploadFactory('pm-documents', { limitMb: 15, extensions: allowedDocumentExtensions });
+export const uploadCompanyLogo = uploadFactory('branding', { limitMb: 3, extensions: allowedImageExtensions });
+export const uploadProjectLogo = uploadFactory('project-logos', { limitMb: 3, extensions: allowedImageExtensions });
 
 export function relativeUploadPath(file) {
   if (!file?.path) return null;

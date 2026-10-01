@@ -4,7 +4,7 @@
 <main class="page">
   <div class="page-heading report-heading">
     <div>
-      <p class="eyebrow"><%= project.contract || 'Project' %> · Daily Report <%= report.urut || report.id_wellinfo %></p>
+      <p class="eyebrow"><%= project.contract || 'Project' %> · Daily Report <%= formatReportNo(report.urut, report.id_wellinfo) %></p>
       <h1><%= report.wellname || project.wellname || 'Well report' %></h1>
       <p class="muted"><%= report.curdate || '-' %> · <%= report.location || 'Location not set' %></p>
     </div>
@@ -65,7 +65,7 @@
         <div><dt>Company man</dt><dd><%= report.companyman || '-' %></dd></div>
         <div><dt>OIM</dt><dd><%= report.oim || '-' %></dd></div>
         <div><dt>Mud engineer</dt><dd><%= report.mudeng || '-' %></dd></div>
-        <div><dt>Report no.</dt><dd><%= report.urut || '-' %></dd></div>
+        <div><dt>Report no.</dt><dd><%= formatReportNo(report.urut, '-') %></dd></div>
       </dl>
     </article>
 

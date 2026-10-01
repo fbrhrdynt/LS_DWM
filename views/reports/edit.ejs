@@ -4,7 +4,7 @@
 <main class="page report-editor-page">
   <div class="page-heading report-heading">
     <div>
-      <p class="eyebrow"><%= project.contract || 'Project' %> · Report <%= report.urut || report.id_wellinfo %></p>
+      <p class="eyebrow"><%= project.contract || 'Project' %> · Report <%= formatReportNo(report.urut, report.id_wellinfo) %></p>
       <h1>Edit daily report</h1>
       <p class="muted"><%= report.wellname || project.wellname || 'Well report' %> · <%= report.curdate || '-' %></p>
     </div>

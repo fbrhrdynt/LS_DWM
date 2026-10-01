@@ -16,12 +16,14 @@ import accountRoutes from './routes/account.routes.js';
 import reportRoutes from './routes/report.routes.js';
 import assetMaintenanceRoutes from './routes/asset-maintenance.routes.js';
 import exportRoutes from './routes/export.routes.js';
+import settingsRoutes from './routes/settings.routes.js';
+import { formatReportNumber } from './services/report-sequence.js';
 import { pingDatabase } from './config/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const APP_VERSION = '0.6.1';
+const APP_VERSION = '0.6.2';
 
 const app = express();
 
@@ -38,6 +40,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(rootDir, 'views'));
 app.locals.appName = process.env.APP_NAME || 'DWM';
 app.locals.assetVersion = APP_VERSION;
+app.locals.formatReportNo = formatReportNumber;
 
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -103,6 +106,7 @@ app.use(accountRoutes);
 app.use(reportRoutes);
 app.use(assetMaintenanceRoutes);
 app.use(exportRoutes);
+app.use(settingsRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

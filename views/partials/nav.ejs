@@ -17,6 +17,7 @@
       <a class="<%= currentPath.startsWith('/inspection') ? 'active' : '' %>" href="/inspection">Inspection</a>
       <% if (user.level === 'MASTER') { %>
         <a class="<%= currentPath.startsWith('/accounts') ? 'active' : '' %>" href="/accounts">Accounts</a>
+        <a class="<%= currentPath.startsWith('/settings') ? 'active' : '' %>" href="/settings/report">Settings</a>
       <% } %>
     </nav>
 
@@ -41,7 +42,10 @@
     <a href="/assets">Assets</a>
     <a href="/maintenance">Maintenance</a>
     <a href="/inspection">Inspection</a>
-    <% if (user.level === 'MASTER') { %><a href="/accounts">Accounts</a><% } %>
+    <% if (user.level === 'MASTER') { %>
+      <a href="/accounts">Accounts</a>
+      <a href="/settings/report">Settings</a>
+    <% } %>
     <button class="mobile-theme-toggle" type="button" data-theme-toggle>
       <span>Appearance</span>
       <strong data-theme-label>Dark</strong>

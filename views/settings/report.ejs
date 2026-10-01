@@ -1,0 +1,137 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page narrow-page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Settings</p>
+      <h1>PDF report settings</h1>
+      <p class="muted">Controls the fixed header used by every DWM Daily Report PDF.</p>
+    </div>
+  </div>
+
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+  <% if (error) { %><div class="alert error"><%= error %></div><% } %>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <h2>Company header</h2>
+        <p class="muted">The report number is inserted automatically. Use <code>{report_no}</code> where the integer report number should appear.</p>
+      </div>
+    </div>
+
+    <form method="post" action="/settings/report" enctype="multipart/form-data" class="form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label class="full-field">
+        <span>Report title</span>
+        <input
+          name="report_title_template"
+          maxlength="120"
+          value="<%= settings.report_title_template %>"
+          placeholder="DWM DAILY REPORT NO. {report_no}"
+          required
+        >
+        <small>Example output: DWM DAILY REPORT NO. 3</small>
+      </label>
+
+      <label class="full-field">
+        <span>Header line 1</span>
+        <input
+          name="company_header_line_1"
+          maxlength="180"
+          value="<%= settings.company_header_line_1 %>"
+          required
+        >
+      </label>
+
+      <label class="full-field">
+        <span>Header line 2</span>
+        <input
+          name="company_header_line_2"
+          maxlength="220"
+          value="<%= settings.company_header_line_2 %>"
+          required
+        >
+      </label>
+
+      <label class="full-field">
+        <span>Our company logo - left side</span>
+        <input name="company_logo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
+        <small>PNG/JPG, maximum 3 MB. This logo is used on the left side of every PDF.</small>
+      </label>
+
+      <% if (hasCompanyLogo) { %>
+        <div class="full-field logo-settings-preview">
+          <img src="/settings/report/company-logo" alt="Our company logo">
+          <label class="inline-check">
+            <input type="checkbox" name="remove_company_logo" value="1">
+            <span>Remove current logo</span>
+          </label>
+        </div>
+      <% } %>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit">Save report settings</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <h2>Client logo - right side</h2>
+        <p class="muted">Choose the project/client whose logo should appear on the right side of its Daily Report PDF.</p>
+      </div>
+    </div>
+
+    <form method="post" action="/settings/report/client-logo" enctype="multipart/form-data" class="form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label>
+        <span>Project / Client</span>
+        <select name="project_id" required>
+          <option value="">Select project</option>
+          <% projects.forEach(project => { %>
+            <option value="<%= project.id_project %>">
+              <%= project.operator_name || project.contract || `Project ${project.id_project}` %> · <%= project.drillingrig || '-' %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label>
+        <span>Client logo</span>
+        <input name="client_logo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
+        <small>PNG/JPG, maximum 3 MB.</small>
+      </label>
+
+      <label class="inline-check">
+        <input type="checkbox" name="remove_client_logo" value="1">
+        <span>Remove logo from selected project</span>
+      </label>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit">Save client logo</button>
+        <a class="secondary-button" href="/projects">Open projects</a>
+      </div>
+    </form>
+
+    <% if (projects.some(project => project.logo)) { %>
+      <div class="client-logo-grid">
+        <% projects.filter(project => project.logo).forEach(project => { %>
+          <article>
+            <img src="/projects/<%= project.id_project %>/logo" alt="<%= project.operator_name || 'Client' %> logo">
+            <div>
+              <strong><%= project.operator_name || project.contract %></strong>
+              <span><%= project.drillingrig || '-' %></span>
+            </div>
+          </article>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

@@ -6,6 +6,7 @@ import {
   calculateRetort,
   calculateDailyWaste
 } from '../services/report-calculations.js';
+import { nextReportDate, nextReportNumber, formatReportNumber } from '../services/report-sequence.js';
 
 const REPORT_TABLES = [
   'details',
@@ -382,6 +383,10 @@ function normalizeValue(raw, meta) {
     if (meta.min !== undefined && value < Number(meta.min)) {
       throw new InputError(`${meta.label} must be at least ${meta.min}.`);
     }
+    if (meta.name === 'urut') {
+      if (!Number.isInteger(value)) throw new InputError('Report number must be a whole number.');
+      return Math.trunc(value);
+    }
     return value;
   }
 
@@ -447,7 +452,12 @@ function updateRow(table, whereSql, whereParams, fields, body) {
 }
 
 function formDataFor(sectionId, section, wellId, report) {
-  if (section.table === 'wellinfo') return { ...report };
+  if (section.table === 'wellinfo') {
+    return {
+      ...report,
+      urut: formatReportNumber(report.urut, '')
+    };
+  }
 
   if (section.special === 'waste') {
     const waste = get('SELECT * FROM dailywaste WHERE id_wellinfo = ? LIMIT 1', [wellId]) || {};
@@ -536,7 +546,7 @@ export function reportEditor(req, res, next) {
     const data = calculatedFormData(sectionId, section, wellId, context.report);
 
     res.render('reports/edit', {
-      title: `Edit report ${context.report.urut || context.report.id_wellinfo}`,
+      title: `Edit report ${formatReportNumber(context.report.urut, context.report.id_wellinfo)}`,
       project: context.project,
       report: context.report,
       sectionId,
@@ -634,7 +644,7 @@ export function saveReportSection(req, res, next) {
       if (!context) return next(error);
 
       return res.status(error.status).render('reports/edit', {
-        title: `Edit report ${context.report.urut || context.report.id_wellinfo}`,
+        title: `Edit report ${formatReportNumber(context.report.urut, context.report.id_wellinfo)}`,
         project: context.project,
         report: context.report,
         sectionId,
@@ -755,12 +765,13 @@ export function copyReport(req, res, next) {
     }
 
     const newWellId = transaction(() => {
-      const nextNumber = Number(get(
-        `SELECT COALESCE(MAX(CAST(urut AS INTEGER)), 0) + 1 AS next_no
+      const projectMax = Number(get(
+        `SELECT COALESCE(MAX(CAST(urut AS INTEGER)), 0) AS max_no
          FROM wellinfo WHERE id_project = ?`,
         [projectId]
-      )?.next_no ?? 1);
-      const date = todayLocal();
+      )?.max_no ?? 0);
+      const nextNumber = nextReportNumber(context.report.urut, projectMax);
+      const date = nextReportDate(context.report.curdate) || todayLocal();
 
       const result = run(
         `INSERT INTO wellinfo
@@ -777,7 +788,7 @@ export function copyReport(req, res, next) {
           context.report.companyman,
           context.report.oim,
           context.report.mudeng,
-          String(nextNumber)
+          nextNumber
         ]
       );
 
@@ -785,6 +796,15 @@ export function copyReport(req, res, next) {
       for (const table of REPORT_TABLES) {
         cloneWellChild(table, sourceWellId, targetWellId);
       }
+
+      const detailColumns = tableColumns('details');
+      if (detailColumns.has('datenow')) {
+        run(
+          `UPDATE details SET datenow = ?, updated_at = datetime('now') WHERE id_wellinfo = ?`,
+          [date, targetWellId]
+        );
+      }
+
       return targetWellId;
     });
 

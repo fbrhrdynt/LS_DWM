@@ -1,6 +1,7 @@
 import { loadDailyReport, loadProjectSummary } from '../services/report-export-data.js';
 import { pipeDailyReportPdf } from '../services/pdf-report.service.js';
 import { buildWellSummaryWorkbook } from '../services/well-summary.service.js';
+import { formatReportNumber } from '../services/report-sequence.js';
 
 function safePart(value, fallback = 'dwm') {
   const text = String(value ?? '').trim();
@@ -22,7 +23,7 @@ export function dailyReportPdf(req, res, next) {
       'DWM',
       safePart(data.project.operator_name, 'Project'),
       safePart(data.report.wellname, 'Well'),
-      `Report-${safePart(data.report.urut || data.report.id_wellinfo)}`
+      `Report-${safePart(formatReportNumber(data.report.urut, data.report.id_wellinfo))}`
     ].join('-') + '.pdf';
 
     const disposition = req.query.download === '1' ? 'attachment' : 'inline';

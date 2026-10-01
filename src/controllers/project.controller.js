@@ -1,4 +1,13 @@
+import path from 'node:path';
+import fs from 'node:fs';
 import { all, get, run, transaction } from '../config/db.js';
+import {
+  deleteStoredUpload,
+  relativeUploadPath,
+  removeUploadedRequestFile,
+  resolveStoredUpload
+} from '../services/file-storage.js';
+import { formatReportNumber } from '../services/report-sequence.js';
 
 const PROJECT_MANAGERS = new Set(['MASTER', 'Supervisor']);
 
@@ -161,26 +170,43 @@ export function editProjectPage(req, res, next) {
 }
 
 export function updateProject(req, res, next) {
+  let uploadedPath = null;
+
   try {
     const projectId = Number(req.params.projectId);
     const existing = get('SELECT * FROM projects WHERE id_project = ? LIMIT 1', [projectId]);
 
     if (!existing) {
+      removeUploadedRequestFile(req);
       return res.status(404).render('errors/404', { title: 'Project not found' });
     }
 
     const input = validateProjectInput(req.body);
+    uploadedPath = req.file ? relativeUploadPath(req.file) : null;
+    const removeLogo = String(req.body.remove_client_logo || '') === '1';
+    const nextLogo = uploadedPath || (removeLogo ? null : existing.logo);
 
     run(
       `UPDATE projects
-       SET contract = ?, operator_name = ?, drillingrig = ?, wellname = ?, kodeakses = ?, updated_at = datetime('now')
+       SET contract = ?, operator_name = ?, drillingrig = ?, wellname = ?, kodeakses = ?, logo = ?, updated_at = datetime('now')
        WHERE id_project = ?`,
-      [input.contract, input.operatorName, input.drillingrig, input.wellname, input.kodeakses, projectId]
+      [input.contract, input.operatorName, input.drillingrig, input.wellname, input.kodeakses, nextLogo, projectId]
     );
+
+    if ((uploadedPath || removeLogo) && existing.logo && existing.logo !== nextLogo) {
+      deleteStoredUpload(existing.logo);
+    }
 
     res.redirect('/projects?notice=' + encodeURIComponent('Project updated successfully.'));
   } catch (error) {
+    if (uploadedPath || req.file) removeUploadedRequestFile(req);
+
     if (error instanceof Error && !String(error.message).includes('SQLITE')) {
+      const existing = get(
+        'SELECT logo FROM projects WHERE id_project = ? LIMIT 1',
+        [Number(req.params.projectId)]
+      );
+
       return res.status(422).render('projects/edit', {
         title: 'Edit project',
         project: {
@@ -190,11 +216,39 @@ export function updateProject(req, res, next) {
           drillingrig: req.body.drillingrig,
           wellname: req.body.wellname,
           kodeakses: req.body.kodeakses,
-          logo: null
+          logo: existing?.logo || null
         },
         error: error.message
       });
     }
+    next(error);
+  }
+}
+
+export function projectLogo(req, res, next) {
+  try {
+    const projectId = Number(req.params.projectId);
+    const project = get(
+      'SELECT id_project, logo FROM projects WHERE id_project = ? LIMIT 1',
+      [projectId]
+    );
+
+    if (!project?.logo) return res.status(404).send('Client logo not found');
+
+    const stored = resolveStoredUpload(project.logo);
+    if (stored && fs.existsSync(stored)) {
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      return res.sendFile(stored);
+    }
+
+    const legacy = path.resolve('public', 'isi', 'logos', path.basename(String(project.logo)));
+    if (fs.existsSync(legacy)) {
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      return res.sendFile(legacy);
+    }
+
+    return res.status(404).send('Client logo not found');
+  } catch (error) {
     next(error);
   }
 }
@@ -296,7 +350,7 @@ export function reportDetail(req, res, next) {
     const additional = get('SELECT * FROM additional WHERE id_wellinfo = ? LIMIT 1', [wellId]) || {};
 
     res.render('projects/report-detail', {
-      title: `Report ${report.urut || report.id_wellinfo}`,
+      title: `Report ${formatReportNumber(report.urut, report.id_wellinfo)}`,
       project,
       report,
       details,

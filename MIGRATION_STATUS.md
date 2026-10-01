@@ -79,3 +79,14 @@ The legacy application should remain available until the remaining items are imp
 - [x] Restored right-side Cuttings By-Passed / Daily Waste / OOC chart blocks
 - [x] Restored right-side activity blocks
 - [x] Preserved DWM server-side PDF generation
+
+
+## v0.6.2 completed
+
+- [x] PDF layout parity pass against legacy Laravel PDF
+- [x] Global company logo upload
+- [x] Per-project client logo upload
+- [x] Editable PDF title/header text
+- [x] Integer-only report numbers
+- [x] Copy report date = source report + 1 day
+- [x] Copied mud-check date follows copied report date

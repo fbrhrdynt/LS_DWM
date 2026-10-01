@@ -14,7 +14,7 @@
   <% if (error) { %><div class="alert error"><%= error %></div><% } %>
 
   <section class="panel">
-    <form method="post" action="/projects/<%= project.id_project %>/update" class="form-grid">
+    <form method="post" action="/projects/<%= project.id_project %>/update" enctype="multipart/form-data" class="form-grid">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
       <label>
@@ -41,6 +41,22 @@
         <span>Report access code</span>
         <input name="kodeakses" inputmode="numeric" pattern="[0-9]{4,10}" maxlength="10" value="<%= project.kodeakses || '' %>" required>
       </label>
+
+      <label class="full-field">
+        <span>Client logo - right side of PDF</span>
+        <input name="client_logo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
+        <small>PNG/JPG, maximum 3 MB. This logo appears on the right side of the Daily Report PDF.</small>
+      </label>
+
+      <% if (project.logo) { %>
+        <div class="full-field logo-settings-preview">
+          <img src="/projects/<%= project.id_project %>/logo" alt="<%= project.operator_name || 'Client' %> logo">
+          <label class="inline-check">
+            <input type="checkbox" name="remove_client_logo" value="1">
+            <span>Remove current client logo</span>
+          </label>
+        </div>
+      <% } %>
 
       <div class="form-actions">
         <button class="primary-button" type="submit">Save changes</button>

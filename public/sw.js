@@ -1,9 +1,9 @@
-const CACHE = 'dwm-static-v061';
+const CACHE = 'dwm-static-v062';
 const STATIC = [
-  '/static/css/app.css?v=0.6.1',
-  '/static/js/app.js?v=0.6.1',
-  '/static/js/maintenance.js?v=0.6.1',
-  '/static/js/report-calculations.js?v=0.6.1'
+  '/static/css/app.css?v=0.6.2',
+  '/static/js/app.js?v=0.6.2',
+  '/static/js/maintenance.js?v=0.6.2',
+  '/static/js/report-calculations.js?v=0.6.2'
 ];
 
 self.addEventListener('install', event => {
