@@ -56,3 +56,14 @@ The legacy application should remain available until the remaining items are imp
 - [x] Horizontal legacy-style Retort worksheet
 - [x] Mobile horizontal scroll for Retort
 - [x] Retort automatic formulas preserved
+
+
+## v0.6 completed
+
+- [x] Daily Report PDF
+- [x] PDF inline preview
+- [x] PDF direct download
+- [x] Server-rendered OOC chart
+- [x] Excel Well Summary
+- [x] Legacy 90-column Well Summary layout
+- [x] Export project authorization

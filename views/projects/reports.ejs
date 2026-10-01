@@ -8,7 +8,10 @@
       <h1><%= project.operator_name || 'Reports' %></h1>
       <p class="muted"><%= project.drillingrig || '' %> <%= project.wellname ? `· ${project.wellname}` : '' %></p>
     </div>
-    <a class="secondary-button" href="/projects">Projects</a>
+    <div class="heading-actions">
+      <a class="secondary-button" href="/projects/<%= project.id_project %>/summary.xlsx">Excel summary</a>
+      <a class="secondary-button" href="/projects">Projects</a>
+    </div>
   </div>
 
   <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>

@@ -13,6 +13,8 @@
         <%= report.lockreport === 'YES' ? 'Locked' : 'Open' %>
       </span>
       <a class="primary-button" href="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/edit?section=report">Edit report</a>
+      <a class="secondary-button" href="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/pdf" target="_blank" rel="noopener">View PDF</a>
+      <a class="secondary-button" href="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/pdf?download=1">Download PDF</a>
       <a class="secondary-button" href="/projects/<%= project.id_project %>/reports">Reports</a>
     </div>
   </div>

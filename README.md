@@ -184,3 +184,17 @@ The expected health version is `0.5.0`.
   Parameter × Shaker Overflow × Cutting Dryer × Centrifuge 1 × Centrifuge 2 × Centrifuge 3.
 - Retort automatic formulas remain active in the browser and are revalidated on the server.
 - Horizontal scrolling is intentionally retained on mobile instead of converting the Retort worksheet into stacked sections.
+
+
+## v0.6 exports
+
+DWM now generates the Daily Report PDF and 90-column Well Summary Excel file server-side.
+
+```text
+GET /projects/:projectId/reports/:wellId/pdf
+GET /projects/:projectId/reports/:wellId/pdf?download=1
+GET /projects/:projectId/summary.xlsx
+```
+
+PDF generation uses PDFKit and the OOC chart is drawn directly in the PDF.
+Excel generation uses ExcelJS. Neither feature adds a heavy browser bundle.

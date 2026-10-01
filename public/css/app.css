@@ -762,3 +762,22 @@ html[data-theme="dark"] .retort-recovery-grid input { border-color: #36404b; }
   .retort-recovery-grid label:nth-child(2) { border-right: 0; }
   .retort-recovery-grid label:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
 }
+
+
+/* v0.6 export controls */
+.export-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .report-heading .heading-actions {
+    margin-top: 12px;
+    width: 100%;
+  }
+  .report-heading .heading-actions .primary-button,
+  .report-heading .heading-actions .secondary-button {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}
