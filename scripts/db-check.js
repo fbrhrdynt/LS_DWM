@@ -19,7 +19,11 @@ const requiredTables = [
   'pm_details',
   'pm_detail_category',
   'inspection_category',
-  'inspection_detail'
+  'inspection_detail',
+  'app_settings',
+  'password_reset_tokens',
+  'user_security',
+  'audit_logs'
 ];
 
 try {

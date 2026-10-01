@@ -1,0 +1,77 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Settings</p>
+      <h1>Audit trail</h1>
+      <p class="muted">Recent authentication and data-change activity. Request bodies and passwords are never stored here.</p>
+    </div>
+    <div class="heading-actions">
+      <a class="secondary-button" href="/settings/report">Report</a>
+      <a class="secondary-button" href="/settings/security">Security</a>
+    </div>
+  </div>
+
+  <section class="panel">
+    <form method="get" action="/settings/audit" class="audit-filter">
+      <label>
+        <span>Search</span>
+        <input name="q" value="<%= filters.q %>" placeholder="Action, path, user...">
+      </label>
+      <label>
+        <span>User</span>
+        <select name="user_id">
+          <option value="">All users</option>
+          <% users.forEach(account => { %>
+            <option value="<%= account.id_user %>" <%= String(filters.user_id) === String(account.id_user) ? 'selected' : '' %>>
+              <%= account.employee_name %> (@<%= account.kode_login %>)
+            </option>
+          <% }) %>
+        </select>
+      </label>
+      <div class="form-actions">
+        <button class="primary-button" type="submit">Filter</button>
+        <a class="secondary-button" href="/settings/audit">Reset</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="table-scroll">
+      <table class="data-table audit-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Request</th>
+            <th>Status</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!logs.length) { %>
+            <tr><td colspan="6" class="muted">No audit entries found.</td></tr>
+          <% } %>
+          <% logs.forEach(log => { %>
+            <tr>
+              <td><%= log.created_at %></td>
+              <td><%= log.employee_name || (log.user_id ? `User #${log.user_id}` : 'Guest') %></td>
+              <td><code><%= log.action %></code></td>
+              <td>
+                <strong><%= log.method || '-' %></strong>
+                <span class="audit-path"><%= log.path || '-' %></span>
+              </td>
+              <td><%= log.status_code || '-' %></td>
+              <td><%= log.ip_address || '-' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

@@ -235,3 +235,11 @@ Excel Well Summary is unchanged from v0.6.
 - Report numbers are always rendered as whole numbers (`3`, never `3.0`).
 - Copy Report uses the source report date + 1 calendar day.
 - Copied report's `details.datenow` also follows the new report date.
+
+
+## v0.7
+
+Production hardening adds password recovery, self-service password changes,
+session revocation, audit trail, SMTP status, stronger security headers, and
+full database/upload backup. Existing report calculations, PDF layout,
+Excel export, Light/Dark themes, Assets, Inspection and PM are unchanged.

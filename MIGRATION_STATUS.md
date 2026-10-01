@@ -90,3 +90,17 @@ The legacy application should remain available until the remaining items are imp
 - [x] Integer-only report numbers
 - [x] Copy report date = source report + 1 day
 - [x] Copied mud-check date follows copied report date
+
+
+## v0.7 completed
+
+- [x] Forgot Password
+- [x] One-time hashed password reset tokens
+- [x] SMTP configuration
+- [x] Self-service Change Password
+- [x] Session invalidation after password change/reset
+- [x] Audit Trail
+- [x] Security settings/status page
+- [x] Full SQLite + uploads backup
+- [x] CSP and security-header hardening
+- [x] Login/reset rate limits

@@ -17,13 +17,15 @@ import reportRoutes from './routes/report.routes.js';
 import assetMaintenanceRoutes from './routes/asset-maintenance.routes.js';
 import exportRoutes from './routes/export.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
+import auditRoutes from './routes/audit.routes.js';
+import { auditMutations } from './middleware/audit.js';
 import { formatReportNumber } from './services/report-sequence.js';
 import { pingDatabase } from './config/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const APP_VERSION = '0.6.2';
+const APP_VERSION = '0.7.0';
 
 const app = express();
 
@@ -43,8 +45,22 @@ app.locals.assetVersion = APP_VERSION;
 app.locals.formatReportNo = formatReportNumber;
 
 app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "data:"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+      imgSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"]
+    }
+  },
+  referrerPolicy: { policy: 'no-referrer' }
 }));
 
 app.use(compression({ threshold: 512 }));
@@ -58,17 +74,28 @@ app.use('/static', express.static(path.join(rootDir, 'public'), {
   lastModified: true
 }));
 
+const sessionKeys = [
+  process.env.SESSION_SECRET,
+  process.env.SESSION_SECRET_PREVIOUS
+].filter(Boolean);
+
+const sessionHours = Math.min(
+  24,
+  Math.max(1, Number(process.env.SESSION_MAX_HOURS || 8))
+);
+
 app.use(cookieSession({
   name: 'dwm.sid',
-  keys: [process.env.SESSION_SECRET],
+  keys: sessionKeys,
   httpOnly: true,
   sameSite: 'lax',
   secure: process.env.NODE_ENV === 'production',
-  maxAge: 2 * 60 * 60 * 1000
+  maxAge: sessionHours * 60 * 60 * 1000
 }));
 
 app.use(loadUser);
 app.use(csrfToken);
+app.use(auditMutations);
 
 app.use((req, res, next) => {
   res.locals.currentPath = req.path;
@@ -107,6 +134,7 @@ app.use(reportRoutes);
 app.use(assetMaintenanceRoutes);
 app.use(exportRoutes);
 app.use(settingsRoutes);
+app.use(auditRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

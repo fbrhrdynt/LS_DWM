@@ -14,6 +14,9 @@
     <h1>Sign in</h1>
     <p class="muted">Use your existing DWM account.</p>
 
+    <% if (notice) { %>
+      <div class="alert info"><%= notice %></div>
+    <% } %>
     <% if (error) { %>
       <div class="alert error"><%= error %></div>
     <% } %>
@@ -34,6 +37,10 @@
 
       <button class="primary-button" type="submit">Sign in</button>
     </form>
+
+    <div class="auth-links">
+      <a href="/forgot-password">Forgot password?</a>
+    </div>
   </section>
 </main>
 <%- include('../partials/foot') %>

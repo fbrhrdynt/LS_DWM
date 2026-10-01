@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { all, get, run } from '../config/db.js';
+import { bumpSessionVersion } from '../services/security.service.js';
 
 const LEVELS = new Set(['MASTER', 'Supervisor', 'Operator', 'Staff']);
 const PROJECT_SCOPED_LEVELS = new Set(['Operator', 'Staff']);
@@ -236,6 +237,13 @@ export async function updateAccount(req, res, next) {
       ]
     );
 
+    if (input.password) {
+      const nextVersion = bumpSessionVersion(accountId);
+      if (accountId === Number(req.user.id_user)) {
+        req.session = { userId: accountId, sessionVersion: nextVersion };
+      }
+    }
+
     res.redirect('/accounts?notice=' + encodeURIComponent('Account updated successfully.'));
   } catch (error) {
     if (error instanceof Error && !String(error.message).includes('SQLITE')) {
@@ -322,6 +330,8 @@ export function deleteAccount(req, res, next) {
       ));
     }
 
+    run('DELETE FROM password_reset_tokens WHERE user_id = ?', [accountId]);
+    run('DELETE FROM user_security WHERE user_id = ?', [accountId]);
     run('DELETE FROM xusers WHERE id_user = ?', [accountId]);
     res.redirect('/accounts?notice=' + encodeURIComponent('Account deleted successfully.'));
   } catch (error) {

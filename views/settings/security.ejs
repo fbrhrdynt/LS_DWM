@@ -1,0 +1,86 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page narrow-page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Settings</p>
+      <h1>Security</h1>
+      <p class="muted">Authentication, session and retention status for this DWM instance.</p>
+    </div>
+    <div class="heading-actions">
+      <a class="secondary-button" href="/settings/report">Report</a>
+      <a class="secondary-button" href="/settings/audit">Audit trail</a>
+    </div>
+  </div>
+
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+
+  <section class="panel">
+    <div class="security-summary">
+      <div>
+        <span>Password reset email</span>
+        <strong><%= mail.configured ? 'Configured' : 'Not configured' %></strong>
+      </div>
+      <div>
+        <span>SMTP host</span>
+        <strong><%= mail.host || '-' %></strong>
+      </div>
+      <div>
+        <span>Reset token lifetime</span>
+        <strong><%= resetTtlMinutes %> minutes</strong>
+      </div>
+      <div>
+        <span>Session lifetime</span>
+        <strong><%= sessionHours %> hours</strong>
+      </div>
+      <div>
+        <span>Audit retention</span>
+        <strong><%= auditRetentionDays %> days</strong>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <h2>SMTP environment</h2>
+        <p class="muted">Configure these values in <code>/opt/dwm/.env</code>. Passwords are not shown in the browser.</p>
+      </div>
+    </div>
+
+    <pre class="config-sample">SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=user@example.com
+SMTP_PASS=CHANGE_ME
+SMTP_FROM="DWM &lt;dwm@example.com&gt;"</pre>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <h2>Retention cleanup</h2>
+        <p class="muted">Deletes used/expired password reset tokens and audit entries older than the configured retention period.</p>
+      </div>
+    </div>
+
+    <form method="post" action="/settings/security/cleanup">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="secondary-button" type="submit">Run cleanup</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <h2>Full backup</h2>
+        <p class="muted">Run from SSH before deployment or major data changes:</p>
+      </div>
+    </div>
+    <pre class="config-sample">cd /opt/dwm
+npm run backup:full</pre>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

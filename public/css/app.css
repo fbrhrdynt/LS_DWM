@@ -848,3 +848,108 @@ html[data-theme="dark"] .retort-recovery-grid input { border-color: #36404b; }
   color: var(--muted);
   font-size: 12px;
 }
+
+
+/* v0.7 security / account / audit */
+.auth-links {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+}
+.auth-links a {
+  color: var(--accent-dark);
+  font-weight: 700;
+  text-decoration: none;
+}
+.auth-links a:hover { text-decoration: underline; }
+
+.account-link {
+  color: var(--text);
+  text-decoration: none;
+}
+.account-link:hover { color: var(--accent-dark); }
+
+.security-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--line);
+}
+.security-summary > div {
+  min-width: 0;
+  padding: 12px 14px;
+  background: var(--surface);
+}
+.security-summary span,
+.security-summary strong {
+  display: block;
+}
+.security-summary span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.security-summary strong {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.config-sample {
+  overflow-x: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.audit-filter {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+.audit-filter label span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.audit-filter input,
+.audit-filter select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 7px 9px;
+  font: inherit;
+}
+.audit-path {
+  display: block;
+  margin-top: 2px;
+  max-width: 360px;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.audit-table code {
+  font-size: 11px;
+  color: var(--accent-dark);
+}
+
+@media (max-width: 760px) {
+  .security-summary { grid-template-columns: 1fr; }
+  .audit-filter { grid-template-columns: 1fr; }
+  .audit-path { max-width: 190px; }
+}

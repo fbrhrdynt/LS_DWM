@@ -1,0 +1,58 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page narrow-page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Account</p>
+      <h1>My account</h1>
+      <p class="muted">Signed in as <%= user.employee_name %>.</p>
+    </div>
+  </div>
+
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+  <% if (error) { %><div class="alert error"><%= error %></div><% } %>
+
+  <section class="panel">
+    <div class="security-summary">
+      <div><span>Name</span><strong><%= user.employee_name %></strong></div>
+      <div><span>Username</span><strong><%= user.kode_login %></strong></div>
+      <div><span>Email</span><strong><%= user.email || '-' %></strong></div>
+      <div><span>Role</span><strong><%= user.level %></strong></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <h2>Change password</h2>
+        <p class="muted">Changing your password invalidates your other active DWM sessions.</p>
+      </div>
+    </div>
+
+    <form method="post" action="/profile/password" class="form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label class="full-field">
+        <span>Current password</span>
+        <input name="current_password" type="password" autocomplete="current-password" required>
+      </label>
+
+      <label>
+        <span>New password</span>
+        <input name="pass_login" type="password" minlength="8" autocomplete="new-password" required>
+      </label>
+
+      <label>
+        <span>Confirm new password</span>
+        <input name="pass_login_confirmation" type="password" minlength="8" autocomplete="new-password" required>
+      </label>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit">Change password</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

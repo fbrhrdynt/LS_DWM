@@ -28,6 +28,49 @@ db.exec(`
     value TEXT,
     updated_at TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_password_reset_user
+    ON password_reset_tokens(user_id);
+
+  CREATE INDEX IF NOT EXISTS idx_password_reset_expiry
+    ON password_reset_tokens(expires_at, used_at);
+
+  CREATE TABLE IF NOT EXISTS user_security (
+    user_id INTEGER PRIMARY KEY,
+    session_version INTEGER NOT NULL DEFAULT 1,
+    password_changed_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    action TEXT NOT NULL,
+    method TEXT,
+    path TEXT,
+    status_code INTEGER,
+    ip_address TEXT,
+    user_agent TEXT,
+    metadata TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_audit_created
+    ON audit_logs(created_at DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_audit_user
+    ON audit_logs(user_id, created_at DESC);
+
+  CREATE INDEX IF NOT EXISTS idx_audit_action
+    ON audit_logs(action, created_at DESC);
 `);
 
 export function all(sql, params = []) {

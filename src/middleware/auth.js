@@ -1,4 +1,5 @@
 import { get } from '../config/db.js';
+import { getSessionVersion } from '../services/security.service.js';
 
 export function loadUser(req, res, next) {
   try {
@@ -17,6 +18,17 @@ export function loadUser(req, res, next) {
     );
 
     if (!user) {
+      req.session = null;
+      return next();
+    }
+
+    const currentVersion = getSessionVersion(user.id_user);
+    const sessionVersion = Number(req.session?.sessionVersion || 0);
+
+    // Seamlessly upgrade sessions created before v0.7.
+    if (!sessionVersion) {
+      req.session.sessionVersion = currentVersion;
+    } else if (sessionVersion !== currentVersion) {
       req.session = null;
       return next();
     }
