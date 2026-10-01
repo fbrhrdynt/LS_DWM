@@ -2,58 +2,47 @@
 
 DWM is being rewritten from the legacy Laravel application to a lightweight Node.js + EJS + SQLite application.
 
-## Implemented through v0.4.1
+## Implemented through v0.5.0
 
 - DWM branding
 - Node.js 22 + Express + EJS
 - SQLite embedded database (`node:sqlite`)
 - Legacy MariaDB/MySQL dump importer
 - Existing Laravel bcrypt password compatibility
-- Signed cookie session, login rate limiting, CSRF protection
+- Signed cookie session, login rate limiting and CSRF protection
 - Server-side role and project isolation
-- Dashboard statistics
+- Dashboard statistics including PM/inspection due within 30 days
 - MASTER account management
 - MASTER/Supervisor project management
-- Automatic initial report creation inside a transaction
-- Project/report lists scoped to the logged-in user
-- Daily Report overview
-- Daily Report editable sections:
-  - Report Info
-  - Well Data
-  - Active Mud Properties
-  - Shakers 1-6
-  - Centrifuge 1-3
-  - Cutting Dryer 1-2
-  - Desander
-  - Desilter
-  - Cuttings By-Passed
-  - Daily Waste + BSS/Rig Activities
-  - Personnel
-  - Full Retort worksheet fields + volume-control/finalize fields
-- Report lock/unlock using project access code
-- Unlock attempt rate limiting
-- Copy current report as the next report
-- Safe report deletion for MASTER/Supervisor
-- Locked reports are read-only on the server, not only in the UI
-- Mobile-first report editor with section navigation and sticky save action
+- Transactional initial Daily Report creation
+- Daily Report editable workflow and automatic calculation engine
+- Report lock/unlock, copy and safe deletion
+- Asset List CRUD
+- COC upload/download
+- Inspection categories
+- Inspection records, certificate upload/download and expiry monitoring
+- Preventive Maintenance categories
+- PM history with automatic due-date calculation from category frequency
+- PM status and due/overdue indicators
+- Equipment/document categories
+- PM document library with secure upload/download/delete
+- Multipart CSRF verification for uploads
+- Server-side file lookup by database ID (no arbitrary public file path route)
+- Mobile-first asset/maintenance/inspection pages
 - Versioned static assets + service-worker cache
 - PM2 and Nginx examples
 - SQLite database checker and backup command
-- Legacy automatic calculations restored for Well Data, Centrifuge, Desander/Desilter, Retort and Daily Waste
-- Calculated fields are read-only in the UI and recalculated server-side before save
-- Formula regression check (`npm run formula:check`)
+- Daily Report formula regression checks
+- Maintenance date-calculation regression checks
 
 ## Still being rewritten before full feature parity
 
 - Project logo upload/migration
-- PDF daily report generation
-- Excel well summary export
-- Assets CRUD / COC files
-- Preventive maintenance
-- PM document library
-- Inspection categories/details/certificates
+- PDF Daily Report generation
+- Excel Well Summary export
 - Forgot/reset password email workflow
 - ownCloud/WebDAV integration
-- Automated regression/security tests
+- Full automated regression/security test suite
+- Migration utility for legacy uploaded COC/certificate/PM document files
 
-The legacy application should remain available until the remaining items are implemented and the latest production data has been migrated and verified.
+The legacy application should remain available until the remaining items are implemented and the latest production data/files have been migrated and verified.

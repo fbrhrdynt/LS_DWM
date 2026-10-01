@@ -1,0 +1,85 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Equipment</p>
+      <h1>Assets</h1>
+      <p class="muted">Company assets, certificates, inspection and maintenance status.</p>
+    </div>
+  </div>
+
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+  <% if (error) { %><div class="alert error"><%= error %></div><% } %>
+
+  <% if (canManage) { %>
+    <section class="panel">
+      <div class="section-heading">
+        <div><h2>Add asset</h2><p class="muted">COC is optional and can be PDF/DOC/DOCX up to 5 MB.</p></div>
+      </div>
+      <form method="post" action="/assets" enctype="multipart/form-data" class="form-grid">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label><span>Asset name</span><input name="asset_name" value="<%= values.asset_name || '' %>" required></label>
+        <label><span>Company asset</span><input name="company_asset" value="<%= values.company_asset || '' %>" required></label>
+        <label><span>Manufacturer S/N</span><input name="mfg_sn" value="<%= values.mfg_sn || '' %>" required></label>
+        <label>
+          <span>Category</span>
+          <select name="id_pm_category" required>
+            <option value="">Select category</option>
+            <% categories.forEach(category => { %>
+              <option value="<%= category.id %>" <%= String(values.id_pm_category || '') === String(category.id) ? 'selected' : '' %>><%= category.name %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select name="status">
+            <% ['Active','Maintenance','Standby','Inactive'].forEach(status => { %>
+              <option value="<%= status %>" <%= (values.status || 'Active') === status ? 'selected' : '' %>><%= status %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label><span>COC</span><input name="coc" type="file" accept=".pdf,.doc,.docx"></label>
+        <label class="full-field"><span>Notes</span><textarea name="notes" rows="3"><%= values.notes || '' %></textarea></label>
+        <div class="form-actions"><button class="primary-button" type="submit">Add asset</button></div>
+      </form>
+    </section>
+  <% } %>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div><h2>Asset list</h2><p class="muted"><%= assets.length %> asset(s)</p></div>
+    </div>
+
+    <% if (!assets.length) { %>
+      <div class="empty-state">No assets available.</div>
+    <% } else { %>
+      <div class="asset-grid">
+        <% assets.forEach(asset => { %>
+          <a class="asset-card" href="/assets/<%= asset.id %>">
+            <div class="asset-card-head">
+              <div>
+                <strong><%= asset.asset_name %></strong>
+                <p><%= asset.company_asset %> · <%= asset.mfg_sn %></p>
+              </div>
+              <span class="badge"><%= asset.status || '-' %></span>
+            </div>
+            <p class="muted"><%= asset.category_name || 'Uncategorized' %></p>
+            <div class="asset-health-grid">
+              <div><span>Inspection</span><strong class="due-<%= asset.inspectionDueState.key %>"><%= asset.inspectionDueState.label %></strong></div>
+              <div><span>PM</span><strong class="due-<%= asset.pmDueState.key %>"><%= asset.pmDueState.label %></strong></div>
+            </div>
+            <div class="meta-row">
+              <span><%= asset.inspection_count %> inspection</span>
+              <span><%= asset.pm_count %> PM record</span>
+              <span class="arrow">→</span>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

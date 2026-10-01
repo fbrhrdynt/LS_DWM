@@ -27,6 +27,14 @@
       <span>Active users</span>
       <strong><%= stats.users %></strong>
     </article>
+    <a class="stat-card stat-link" href="/inspection">
+      <span>Inspection due ≤30d</span>
+      <strong><%= stats.inspectionDue %></strong>
+    </a>
+    <a class="stat-card stat-link" href="/maintenance">
+      <span>PM due ≤30d</span>
+      <strong><%= stats.pmDue %></strong>
+    </a>
   </section>
 </main>
 

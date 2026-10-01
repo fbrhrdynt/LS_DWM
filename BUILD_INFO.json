@@ -1,11 +1,11 @@
 {
   "name": "DWM",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "database": "SQLite via node:sqlite",
   "requires_node": ">=22.5",
   "mysql_required": false,
   "legacy_import": "scripts/import-legacy-sql.js",
   "database_path": "data/dwm.sqlite",
-  "phase": "formula-restore",
+  "phase": "Assets, Inspection & Preventive Maintenance",
   "auto_calculation": "client-and-server"
 }

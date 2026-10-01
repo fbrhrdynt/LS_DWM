@@ -144,3 +144,33 @@ Validate formulas after deployment:
 ```bash
 npm run formula:check
 ```
+
+
+## v0.5 Assets, Inspection and Preventive Maintenance
+
+DWM v0.5 ports the legacy asset-management modules without exposing raw file paths.
+
+Included:
+
+- Asset CRUD and COC files
+- Inspection categories, records, certificates and due/expired status
+- Preventive-maintenance categories and history
+- Automatic PM due date: `PM Start + Category Frequency`
+- PM document/equipment categories and document library
+- Dashboard PM/inspection due counters
+- Secure multipart upload with CSRF verification
+
+Uploads are stored under `storage/uploads/` and remain excluded from Git. Database rows store only relative managed paths.
+
+After deployment run:
+
+```bash
+npm install
+npm run maintenance:check
+npm run formula:check
+npm run check
+npm run db:check
+pm2 restart dwm --update-env
+```
+
+The expected health version is `0.5.0`.

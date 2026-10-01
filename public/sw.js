@@ -1,7 +1,8 @@
-const CACHE = 'dwm-static-v041';
+const CACHE = 'dwm-static-v050';
 const STATIC = [
-  '/static/css/app.css?v=0.4.1',
-  '/static/js/app.js?v=0.4.1'
+  '/static/css/app.css?v=0.5.0',
+  '/static/js/app.js?v=0.5.0',
+  '/static/js/maintenance.js?v=0.5.0'
 ];
 
 self.addEventListener('install', event => {
@@ -20,7 +21,6 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-
   if (event.request.method !== 'GET' || url.origin !== location.origin) return;
   if (!url.pathname.startsWith('/static/')) return;
 

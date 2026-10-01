@@ -1,0 +1,70 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Maintenance</p>
+      <h1>Preventive Maintenance</h1>
+      <p class="muted">PM schedule and history. Due dates are calculated from category frequency.</p>
+    </div>
+    <a class="secondary-button" href="/maintenance/documents">PM Documents</a>
+  </div>
+
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+
+  <% if (['MASTER','Supervisor'].includes(user.level)) { %>
+    <section class="panel">
+      <div class="section-heading"><div><h2>PM categories</h2><p class="muted">Frequency drives automatic PM due dates.</p></div></div>
+      <form method="post" action="/maintenance/categories" class="form-grid compact-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label><span>PM name</span><input name="pm_name" required></label>
+        <label><span>Frequency</span><input name="frequency" type="number" min="1" value="1" required></label>
+        <label><span>Unit</span><select name="frequency_unit"><% ['Day','Week','Month','Year'].forEach(unit => { %><option value="<%= unit %>"><%= unit %></option><% }) %></select></label>
+        <label class="full-field"><span>Notes</span><input name="notes"></label>
+        <div class="form-actions"><button class="primary-button" type="submit">Add PM category</button></div>
+      </form>
+      <div class="responsive-list category-list">
+        <% categories.forEach(category => { %>
+          <article class="management-row">
+            <form method="post" action="/maintenance/categories/<%= category.id %>/update" class="inline-edit-form pm-category-inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input name="pm_name" value="<%= category.pm_name %>" required>
+              <input name="frequency" type="number" min="1" value="<%= category.frequency %>" required>
+              <select name="frequency_unit"><% ['Day','Week','Month','Year'].forEach(unit => { %><option value="<%= unit %>" <%= category.frequency_unit === unit ? 'selected' : '' %>><%= unit %></option><% }) %></select>
+              <input name="notes" value="<%= category.notes || '' %>" placeholder="Notes">
+              <span class="muted"><%= category.usage_count %> record(s)</span>
+              <button class="secondary-button" type="submit">Save</button>
+            </form>
+            <% if (Number(category.usage_count) === 0) { %><form method="post" action="/maintenance/categories/<%= category.id %>/delete" onsubmit="return confirm('Delete this PM category?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="danger-button" type="submit">Delete</button></form><% } %>
+          </article>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <section class="panel">
+    <div class="section-heading"><div><h2>PM records</h2><p class="muted"><%= records.length %> record(s)</p></div></div>
+    <% if (!records.length) { %><div class="empty-state">No preventive maintenance records.</div><% } else { %>
+      <div class="table-wrap">
+        <table class="data-table compliance-table">
+          <thead><tr><th>Asset</th><th>PM</th><th>Start</th><th>Due</th><th>Status</th><th>Performed by</th></tr></thead>
+          <tbody>
+            <% records.forEach(record => { %>
+              <tr>
+                <td><a class="table-link" href="/assets/<%= record.id_asset_list %>"><strong><%= record.company_asset || '-' %></strong><br><span><%= record.asset_name || '-' %></span></a></td>
+                <td><%= record.pm_name || '-' %><br><span class="muted"><%= record.frequency %> <%= record.frequency_unit %></span></td>
+                <td><%= record.pm_start || '-' %></td>
+                <td><%= record.pm_due || '-' %></td>
+                <td><span class="badge"><%= record.pm_status || '-' %></span> <span class="badge due-<%= record.dueState.key %>"><%= record.dueState.label %></span></td>
+                <td><%= record.performed_by || '-' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

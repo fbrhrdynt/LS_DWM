@@ -1,4 +1,5 @@
 import { get } from '../config/db.js';
+import { todayInTimeZone } from '../services/maintenance-calculations.js';
 
 export function dashboard(req, res, next) {
   try {
@@ -15,13 +16,29 @@ export function dashboard(req, res, next) {
 
     const assets = get('SELECT COUNT(*) AS total FROM assets_list')?.total ?? 0;
 
+    const today = todayInTimeZone();
+    const inspectionDue = get(
+      `SELECT COUNT(*) AS total FROM inspection_detail
+       WHERE inspection_exp IS NOT NULL
+         AND date(inspection_exp) <= date(?, '+30 day')`,
+      [today]
+    )?.total ?? 0;
+
+    const pmDue = get(
+      `SELECT COUNT(*) AS total FROM pm_details
+       WHERE pm_due IS NOT NULL
+         AND COALESCE(pm_status, '') NOT IN ('Completed','Cancelled')
+         AND date(pm_due) <= date(?, '+30 day')`,
+      [today]
+    )?.total ?? 0;
+
     const users = globalAccess
       ? get(`SELECT COUNT(*) AS total FROM xusers WHERE status = 'Y'`)?.total ?? 0
       : get(`SELECT COUNT(*) AS total FROM xusers WHERE status = 'Y' AND id_project = ?`, [projectId])?.total ?? 0;
 
     res.render('dashboard/index', {
       title: 'Dashboard',
-      stats: { projects, reports, assets, users }
+      stats: { projects, reports, assets, users, inspectionDue, pmDue }
     });
   } catch (error) {
     next(error);

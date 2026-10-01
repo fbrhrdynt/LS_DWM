@@ -1,0 +1,67 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Compliance</p>
+      <h1>Inspection</h1>
+      <p class="muted">Inspection categories, certificates and expiry monitoring.</p>
+    </div>
+  </div>
+
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+
+  <% if (['MASTER','Supervisor'].includes(user.level)) { %>
+    <section class="panel">
+      <div class="section-heading"><div><h2>Inspection categories</h2><p class="muted">Create and maintain inspection types.</p></div></div>
+      <form method="post" action="/inspection/categories" class="form-grid compact-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label><span>Name</span><input name="name_inspection" required></label>
+        <label class="full-field"><span>Notes</span><input name="notes"></label>
+        <div class="form-actions"><button class="primary-button" type="submit">Add category</button></div>
+      </form>
+      <div class="responsive-list category-list">
+        <% categories.forEach(category => { %>
+          <article class="management-row">
+            <form method="post" action="/inspection/categories/<%= category.id_inspection %>/update" class="inline-edit-form">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input name="name_inspection" value="<%= category.name_inspection %>" required>
+              <input name="notes" value="<%= category.notes || '' %>" placeholder="Notes">
+              <span class="muted"><%= category.usage_count %> record(s)</span>
+              <button class="secondary-button" type="submit">Save</button>
+            </form>
+            <% if (Number(category.usage_count) === 0) { %>
+              <form method="post" action="/inspection/categories/<%= category.id_inspection %>/delete" onsubmit="return confirm('Delete this category?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="danger-button" type="submit">Delete</button></form>
+            <% } %>
+          </article>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <section class="panel">
+    <div class="section-heading"><div><h2>Inspection records</h2><p class="muted"><%= inspections.length %> record(s)</p></div></div>
+    <% if (!inspections.length) { %><div class="empty-state">No inspection records.</div><% } else { %>
+      <div class="table-wrap">
+        <table class="data-table compliance-table">
+          <thead><tr><th>Asset</th><th>Inspection</th><th>Date</th><th>Expiry</th><th>Status</th><th>Certificate</th></tr></thead>
+          <tbody>
+            <% inspections.forEach(record => { %>
+              <tr>
+                <td><a class="table-link" href="/assets/<%= record.id_asset_list %>"><strong><%= record.company_asset || '-' %></strong><br><span><%= record.asset_name || '-' %></span></a></td>
+                <td><%= record.name_inspection || '-' %></td>
+                <td><%= record.inspection_date || '-' %></td>
+                <td><%= record.inspection_exp || '-' %></td>
+                <td><span class="badge due-<%= record.dueState.key %>"><%= record.dueState.label %></span></td>
+                <td><% if (record.cert) { %><a class="secondary-button" href="/inspections/<%= record.id %>/certificate"><%= record.hasFile ? 'Download' : 'Missing' %></a><% } else { %>-<% } %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

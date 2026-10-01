@@ -1,6 +1,6 @@
 {
   "name": "dwm",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "description": "DWM - lightweight Node.js rewrite of the legacy Laravel application",
@@ -13,8 +13,9 @@
     "db:check": "node scripts/db-check.js",
     "db:import": "node scripts/import-legacy-sql.js",
     "db:backup": "node scripts/backup-db.js",
-    "check": "node --check src/server.js && node --check src/controllers/project.controller.js && node --check src/controllers/report.controller.js && node --check src/controllers/account.controller.js && node --check src/services/report-calculations.js && node --check src/routes/report.routes.js && node --check public/js/report-calculations.js",
-    "formula:check": "node scripts/formula-check.js"
+    "check": "node --check src/server.js && node --check src/controllers/project.controller.js && node --check src/controllers/report.controller.js && node --check src/controllers/account.controller.js && node --check src/controllers/asset.controller.js && node --check src/controllers/inspection.controller.js && node --check src/controllers/maintenance.controller.js && node --check src/services/report-calculations.js && node --check src/services/maintenance-calculations.js && node --check src/services/file-storage.js && node --check src/routes/report.routes.js && node --check src/routes/asset-maintenance.routes.js && node --check public/js/report-calculations.js && node --check public/js/maintenance.js",
+    "formula:check": "node scripts/formula-check.js",
+    "maintenance:check": "node scripts/maintenance-check.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -24,6 +25,7 @@
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "multer": "^2.0.2"
   }
 }
