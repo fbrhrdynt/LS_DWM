@@ -198,3 +198,28 @@ GET /projects/:projectId/summary.xlsx
 
 PDF generation uses PDFKit and the OOC chart is drawn directly in the PDF.
 Excel generation uses ExcelJS. Neither feature adds a heavy browser bundle.
+
+
+## v0.6.1 - legacy PDF layout restored
+
+The Daily Report PDF renderer now follows the original Laravel
+`resources/views/reports/sample1.blade.php` layout rather than the redesigned
+v0.6 export.
+
+Key layout parity:
+
+- A4 portrait (not landscape)
+- Compact legacy font scale
+- Thin outer report border
+- Original Step Oil Tools header/address area
+- Original 3-block Well Information rows
+- Active Mud Properties in two compact 10-column rows
+- Centrifuges and Shale Shakers share the same table
+- Desander/Desilter remain on the right side of the centrifuge table
+- Retort remains horizontal
+- Cuttings By-Passed and Daily Waste remain on the right of the Retort table
+- OOC chart occupies the original right-side block
+- Rig / Other Activities and Step Oil Tools Activities remain in the right-side blocks
+- Oil/Mud Recovery and Engineers remain at the bottom of the Retort table
+
+Excel Well Summary is unchanged from v0.6.

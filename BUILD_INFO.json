@@ -1,6 +1,6 @@
 {
   "name": "DWM",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "database": "SQLite via node:sqlite",
   "requires_node": ">=22.5",
   "mysql_required": false,
@@ -8,5 +8,5 @@
   "database_path": "data/dwm.sqlite",
   "phase": "Assets, Inspection & Preventive Maintenance",
   "auto_calculation": "client-and-server",
-  "release": "PDF Daily Report + Excel Well Summary"
+  "release": "Legacy Laravel PDF Layout Restore"
 }

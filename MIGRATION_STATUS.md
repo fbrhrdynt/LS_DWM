@@ -67,3 +67,15 @@ The legacy application should remain available until the remaining items are imp
 - [x] Excel Well Summary
 - [x] Legacy 90-column Well Summary layout
 - [x] Export project authorization
+
+
+## v0.6.1 PDF correction
+
+- [x] Reverted PDF orientation to A4 portrait
+- [x] Restored legacy compact report layout
+- [x] Restored combined Centrifuge/Shaker table
+- [x] Restored Desander/Desilter side-by-side placement
+- [x] Restored horizontal Retort layout
+- [x] Restored right-side Cuttings By-Passed / Daily Waste / OOC chart blocks
+- [x] Restored right-side activity blocks
+- [x] Preserved DWM server-side PDF generation

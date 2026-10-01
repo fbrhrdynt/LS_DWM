@@ -20,3 +20,24 @@ if (row.length !== columns) {
 }
 
 console.log(`Export checks: OK (${columns} Well Summary columns)`);
+
+
+import fs from 'node:fs';
+
+const pdfSource = fs.readFileSync(new URL('../src/services/pdf-report.service.js', import.meta.url), 'utf8');
+
+for (const required of [
+  "layout: PAGE.layout",
+  "layout: 'portrait'",
+  "C E N T R I F U G E S",
+  "SHALE SHAKERS & SCREENS",
+  "RETORT WORKSHEET",
+  "Daily Waste & Average MOC",
+  "STEP OIL TOOLS ACTIVITIES"
+]) {
+  if (!pdfSource.includes(required)) {
+    throw new Error(`Legacy PDF layout source check failed: ${required}`);
+  }
+}
+
+console.log('Legacy PDF layout source check: OK');

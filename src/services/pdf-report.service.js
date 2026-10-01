@@ -1,24 +1,34 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '../..');
+
 const GREEN = '#267544';
-const DARK = '#17202a';
-const MUTED = '#5f6b78';
-const LINE = '#b7bec7';
-const LIGHT = '#f1f4f7';
 const WHITE = '#ffffff';
+const BLACK = '#111111';
+const GREY = '#666666';
+const BORDER = '#999999';
 
-function show(value, fallback = '-') {
-  if (value === null || value === undefined || value === '') return fallback;
-  return String(value);
+const PAGE = {
+  size: 'A4',
+  layout: 'portrait',
+  margin: 10
+};
+
+function val(value, fallback = '-') {
+  return value === null || value === undefined || value === '' ? fallback : String(value);
 }
 
-function number(value, digits = 2) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return '-';
-  return parsed.toFixed(digits);
+function numeric(value, fallback = 0) {
+  const n = Number(String(value ?? '').replaceAll(',', ''));
+  return Number.isFinite(n) ? n : fallback;
 }
 
-function fluidName(code) {
+function fluidType(code) {
   return ({
     'WB-SW': 'Sea Water',
     'WB-WB': 'Water Base',
@@ -26,357 +36,684 @@ function fluidName(code) {
     'OBM-LT': 'LT-Oil Base',
     'OBM-SB': 'Synthetic Base',
     'OBM-EN': 'Enviromul'
-  })[code] || show(code);
+  })[code] || val(code);
 }
 
-function ensureSpace(doc, height = 40) {
-  const limit = doc.page.height - doc.page.margins.bottom - 18;
-  if (doc.y + height > limit) doc.addPage();
+function fluidCategoryLabels(code) {
+  const water = ['WB-SW', 'WB-WB', 'WB-WBH'].includes(code);
+  return water
+    ? { left: 'MBT (lb/bbl)', right: '% Base Fluid' }
+    : { left: 'E-Stability (Volt)', right: 'Oil / Water Ratio' };
 }
 
-function sectionTitle(doc, title) {
-  ensureSpace(doc, 24);
-  const x = doc.page.margins.left;
-  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const y = doc.y;
-  doc.save().rect(x, y, width, 16).fill(GREEN).restore();
-  doc.fillColor(WHITE).font('Helvetica-Bold').fontSize(7.5)
-    .text(title, x, y + 4, { width, align: 'center', characterSpacing: 1.2 });
-  doc.fillColor(DARK);
-  doc.y = y + 18;
+function dateText(value) {
+  if (!value) return '-';
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return String(value);
+  const [, year, month, day] = match;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${day}-${months[Number(month) - 1] || month}-${year}`;
 }
 
-function keyValueGrid(doc, items, columns = 3) {
-  const x = doc.page.margins.left;
-  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const colWidth = width / columns;
-  const rowHeight = 22;
+function sampleTime(value) {
+  if (value === null || value === undefined || value === '') return '-';
 
-  for (let i = 0; i < items.length; i += columns) {
-    ensureSpace(doc, rowHeight + 2);
-    const y = doc.y;
+  const text = String(value).trim();
+  if (/^\d{1,2}:\d{2}$/.test(text)) return text;
 
-    for (let c = 0; c < columns; c++) {
-      const item = items[i + c];
-      if (!item) continue;
-      const cx = x + c * colWidth;
-
-      doc.save().rect(cx, y, colWidth, rowHeight).strokeColor(LINE).lineWidth(0.35).stroke().restore();
-      doc.fillColor(MUTED).font('Helvetica').fontSize(5.5)
-        .text(item[0], cx + 4, y + 3, { width: colWidth - 8, height: 7 });
-      doc.fillColor(DARK).font('Helvetica-Bold').fontSize(7)
-        .text(show(item[1]), cx + 4, y + 11, { width: colWidth - 8, height: 8, ellipsis: true });
-    }
-
-    doc.y = y + rowHeight;
+  const minutes = Number(text);
+  if (Number.isFinite(minutes)) {
+    return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(Math.round(minutes % 60)).padStart(2, '0')}`;
   }
 
-  doc.moveDown(0.35);
+  return text;
 }
 
-function table(doc, headers, rows, widths, options = {}) {
-  const x = doc.page.margins.left;
-  const rowHeight = options.rowHeight || 17;
-  const headerHeight = options.headerHeight || 20;
+function pctWidths(totalWidth, percentages) {
+  return percentages.map(p => totalWidth * (p / 100));
+}
 
-  const drawHeader = () => {
-    ensureSpace(doc, headerHeight + rowHeight);
-    const y = doc.y;
-    let cx = x;
-    headers.forEach((header, i) => {
-      const width = widths[i];
-      doc.save().rect(cx, y, width, headerHeight).fill(LIGHT).strokeColor(LINE).lineWidth(0.35).stroke().restore();
-      doc.fillColor(DARK).font('Helvetica-Bold').fontSize(options.headerFont || 5.7)
-        .text(header, cx + 2, y + 4, { width: width - 4, height: headerHeight - 5, align: 'center', ellipsis: true });
-      cx += width;
+function fitText(doc, text, width, height, options = {}) {
+  const font = options.bold ? 'Helvetica-Bold' : 'Helvetica';
+  let size = options.fontSize || 5.15;
+  const min = options.minFontSize || 3.7;
+  const content = val(text, options.fallback ?? '-');
+
+  doc.font(font);
+  while (size > min) {
+    doc.fontSize(size);
+    const h = doc.heightOfString(content, {
+      width: Math.max(1, width - 4),
+      align: options.align || 'left',
+      lineGap: 0
     });
-    doc.y = y + headerHeight;
+    if (h <= height - 2) break;
+    size -= 0.25;
+  }
+
+  doc.fontSize(size);
+  return content;
+}
+
+function cell(doc, x, y, width, height, text, options = {}) {
+  if (options.fill) {
+    doc.save().rect(x, y, width, height).fill(options.fill).restore();
+  }
+
+  if (options.border !== false) {
+    doc.save()
+      .lineWidth(options.lineWidth || 0.35)
+      .strokeColor(options.borderColor || BORDER)
+      .rect(x, y, width, height)
+      .stroke()
+      .restore();
+  }
+
+  const padX = options.padX ?? 2;
+  const padY = options.padY ?? 1.5;
+  const content = fitText(doc, text, width - padX * 2, height - padY * 2, options);
+
+  doc.fillColor(options.color || BLACK)
+    .font(options.bold ? 'Helvetica-Bold' : 'Helvetica')
+    .text(
+      content,
+      x + padX,
+      y + padY,
+      {
+        width: Math.max(1, width - padX * 2),
+        height: Math.max(1, height - padY * 2),
+        align: options.align || 'left',
+        lineGap: 0,
+        ellipsis: Boolean(options.ellipsis)
+      }
+    );
+}
+
+function row(doc, x, y, totalWidth, cells, options = {}) {
+  const height = options.height || 10;
+  let cx = x;
+
+  for (const item of cells) {
+    const width = item.widthPct !== undefined
+      ? totalWidth * (item.widthPct / 100)
+      : item.width;
+
+    cell(doc, cx, y, width, item.height || height, item.text, {
+      align: item.align,
+      bold: item.bold,
+      fill: item.fill,
+      color: item.color,
+      fontSize: item.fontSize || options.fontSize,
+      minFontSize: item.minFontSize || options.minFontSize,
+      border: item.border,
+      lineWidth: item.lineWidth,
+      padX: item.padX,
+      padY: item.padY,
+      ellipsis: item.ellipsis
+    });
+    cx += width;
+  }
+
+  return y + height;
+}
+
+function greenCell(text, widthPct, extra = {}) {
+  return {
+    text,
+    widthPct,
+    fill: GREEN,
+    color: WHITE,
+    bold: true,
+    align: extra.align || 'center',
+    fontSize: extra.fontSize || 5.4,
+    ...extra
   };
-
-  drawHeader();
-
-  rows.forEach((row) => {
-    if (doc.y + rowHeight > doc.page.height - doc.page.margins.bottom - 18) {
-      doc.addPage();
-      drawHeader();
-    }
-
-    const y = doc.y;
-    let cx = x;
-
-    row.forEach((cell, i) => {
-      const width = widths[i];
-      doc.save().rect(cx, y, width, rowHeight).strokeColor(LINE).lineWidth(0.3).stroke().restore();
-      doc.fillColor(DARK).font(i === 0 && options.boldFirst ? 'Helvetica-Bold' : 'Helvetica')
-        .fontSize(options.font || 5.5)
-        .text(show(cell), cx + 2, y + 4, {
-          width: width - 4,
-          height: rowHeight - 5,
-          align: i === 0 && options.leftFirst ? 'left' : 'center',
-          ellipsis: true
-        });
-      cx += width;
-    });
-
-    doc.y = y + rowHeight;
-  });
-
-  doc.moveDown(0.45);
 }
 
-function drawOocChart(doc, retort) {
-  ensureSpace(doc, 104);
-  const x = doc.page.margins.left;
-  const width = 280;
-  const height = 82;
-  const y = doc.y + 4;
+function textCell(text, widthPct, extra = {}) {
+  return { text, widthPct, ...extra };
+}
 
-  const labels = ['Shaker', 'Dryer', 'CF1', 'CF2', 'CF3'];
-  const values = [
-    Number(retort.rt_sh_ooc) || 0,
-    Number(retort.rt_cdu_ooc) || 0,
-    Number(retort.rt_cf1_ooc) || 0,
-    Number(retort.rt_cf2_ooc) || 0,
-    Number(retort.rt_cf3_ooc) || 0
+function tryImage(doc, candidates, x, y, width, height) {
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const file = path.isAbsolute(candidate) ? candidate : path.join(rootDir, candidate);
+    try {
+      if (fs.existsSync(file) && fs.statSync(file).isFile()) {
+        doc.image(file, x, y, {
+          fit: [width, height],
+          align: 'center',
+          valign: 'center'
+        });
+        return true;
+      }
+    } catch {}
+  }
+  return false;
+}
+
+function drawHeader(doc, data, x, y, width) {
+  const { project, report } = data;
+  const leftW = width * 0.25;
+  const centerW = width * 0.50;
+  const rightW = width * 0.25;
+  const h = 47;
+
+  cell(doc, x, y, leftW, h, '', { border: false });
+  const stepLogo = tryImage(doc, [
+    process.env.DWM_REPORT_LOGO,
+    'public/stepoil_logo.jpeg',
+    'storage/branding/stepoil_logo.jpeg'
+  ], x + 3, y + 5, leftW - 6, h - 10);
+
+  if (!stepLogo) {
+    doc.fillColor(GREEN).font('Helvetica-Bold').fontSize(10)
+      .text('STEP OIL TOOLS', x + 5, y + 17, { width: leftW - 10, align: 'center' });
+  }
+
+  doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(13)
+    .text(`DWM DAILY REPORT NO. ${val(report.urut, report.id_wellinfo)}`, x + leftW, y + 5, {
+      width: centerW,
+      align: 'center'
+    });
+
+  doc.font('Helvetica').fontSize(7)
+    .text('PT Step Oiltools, Graha Inti Fauzi 12th Floor', x + leftW, y + 23, {
+      width: centerW,
+      align: 'center'
+    })
+    .text('Jl. Buncit Raya No. 22 Jakarta 12510 - Indonesia Tel: +62 21 7943352', x + leftW, y + 32, {
+      width: centerW,
+      align: 'center'
+    });
+
+  const projectLogoName = project.logo ? String(project.logo) : '';
+  const projectLogo = tryImage(doc, [
+    projectLogoName && `public/isi/logos/${projectLogoName}`,
+    projectLogoName && `storage/uploads/project-logos/${projectLogoName}`,
+    projectLogoName
+  ], x + leftW + centerW + 7, y + 7, rightW - 14, h - 14);
+
+  if (!projectLogo) {
+    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(7)
+      .text(val(project.operator_name), x + leftW + centerW + 5, y + 18, {
+        width: rightW - 10,
+        align: 'center'
+      });
+  }
+
+  return y + h;
+}
+
+function drawWellInfo(doc, data, x, y, width) {
+  const { project, report, details } = data;
+  const unit = val(details.depth_each, 'feet');
+  const rows = [
+    ['Operator', project.operator_name, 'Depth (ft)', details.curdepth, 'feet', 'Date', dateText(report.curdate)],
+    ['Well Name', report.wellname, 'Depth 1 Day Before', details.depth1bef, 'feet', 'Spud-in Date', dateText(report.spud_date)],
+    ['Location', report.location, '% Washout', details.washout, '%', 'Bit Size (inch)', details.bitsize],
+    ['Operator Rep', report.companyman, `Vol Hole Drilled (${val(details.volholeunit)})`, details.volholedrill, val(details.volholeunit), 'Bit Type', details.bittype],
+    ['Contractor Rep', report.oim, 'Fluids Type', fluidType(details.fluidtype), '', 'Avg. ROP for Drlg Hrs', details.avgrop],
+    ['Drilling Rig', project.drillingrig, 'Activity', details.rigpresentact, '', 'Circulating Rate gpm', details.cirrategpm]
   ];
 
-  doc.font('Helvetica-Bold').fontSize(7).fillColor(DARK).text('Oil-on-Cuttings (%)', x, doc.y);
-  const chartY = y + 10;
-  const baseline = chartY + height - 14;
+  for (const r of rows) {
+    y = row(doc, x, y, width, [
+      textCell(r[0], 15, { align: 'right', bold: true }),
+      textCell(`: ${val(r[1])}`, 16),
+      textCell('', 2),
+      textCell(r[2], 12, { align: 'right', bold: true }),
+      textCell(`: ${val(r[3])}`, 10),
+      textCell(r[4], 5),
+      textCell('', 2),
+      textCell(r[5], 12, { align: 'right', bold: true }),
+      textCell(`: ${val(r[6])}`, 10),
+      textCell('', 6)
+    ], { height: 10.2, fontSize: 5.05 });
+  }
 
-  doc.save().strokeColor(LINE).lineWidth(0.5)
-    .moveTo(x + 24, chartY).lineTo(x + 24, baseline)
-    .lineTo(x + width, baseline).stroke().restore();
-
-  const barWidth = 30;
-  const gap = 18;
-
-  values.forEach((raw, i) => {
-    const v = Math.max(0, Math.min(100, raw));
-    const barHeight = (height - 24) * (v / 100);
-    const bx = x + 40 + i * (barWidth + gap);
-    const by = baseline - barHeight;
-
-    doc.save().rect(bx, by, barWidth, barHeight).fill(GREEN).restore();
-    doc.fillColor(DARK).font('Helvetica').fontSize(5.3)
-      .text(number(v, 1), bx, by - 8, { width: barWidth, align: 'center' });
-    doc.fillColor(MUTED).fontSize(5.1)
-      .text(labels[i], bx - 5, baseline + 3, { width: barWidth + 10, align: 'center' });
-  });
-
-  doc.y = chartY + height + 6;
+  return y;
 }
 
-function addFooters(doc) {
-  const range = doc.bufferedPageRange();
+function drawActiveMud(doc, data, x, y, width) {
+  const d = data.details;
+  const labels = fluidCategoryLabels(d.fluidtype);
+  const water = ['WB-SW', 'WB-WB', 'WB-WBH'].includes(d.fluidtype);
+  const result1 = water ? d.categories2 : d.categories1;
+  const result2 = water ? d.basefluid : d.categories2;
+
+  y = row(doc, x, y, width, [
+    greenCell('A C T I V E   M U D   P R O P E R T I E S', 100, { fontSize: 6.1 })
+  ], { height: 11 });
+
+  const rows = [
+    [
+      `Mud Weight (${val(d.mwunit)})`, d.mudweight,
+      '% LGS', d.lgsactive,
+      'PV (cps)', d.pv,
+      'YP (lbs/100 ft2)', d.yp,
+      labels.left, result1
+    ],
+    [
+      `Mud Temp. (${d.tempunit === 'degc' ? 'C' : 'F'})`, d.mudtemp,
+      '% HGS', d.hgsactive,
+      'Sand Cont', d.sandcontent,
+      'Chlorides (mg/L)', d.chlorides,
+      labels.right, result2
+    ]
+  ];
+
+  for (const r of rows) {
+    const cells = [];
+    for (let i = 0; i < r.length; i += 2) {
+      cells.push(textCell(r[i], 10, { align: 'right' }));
+      cells.push(textCell(`: ${val(r[i + 1])}`, 10));
+    }
+    y = row(doc, x, y, width, cells, { height: 10, fontSize: 4.95 });
+  }
+
+  return y;
+}
+
+function drawEquipment(doc, data, x, y, width) {
+  const d = data.details;
+  const ds = data.desander;
+  const di = data.desilter;
+
+  y = row(doc, x, y, width, [
+    greenCell('C E N T R I F U G E S', 24.2),
+    greenCell('Centrifuge 1', 9.2),
+    greenCell('Centrifuge 2', 9.2),
+    greenCell('Centrifuge 3', 10),
+    greenCell('SHALE SHAKERS & SCREENS', 42.4)
+  ], { height: 10 });
+
+  y = row(doc, x, y, width, [
+    greenCell('', 24.2),
+    greenCell(d.cf1_sn, 9.2),
+    greenCell(d.cf2_sn, 9.2),
+    greenCell(d.cf3_sn, 10),
+    greenCell('Shakers', 10),
+    greenCell('Model (Type)', 15),
+    greenCell('Screen Size', 15),
+    greenCell('Running Hrs', 7.4)
+  ], { height: 10 });
+
+  const shakerRows = [
+    ['Serial Number', '', d.cf1_sn, d.cf2_sn, d.cf3_sn, d.sh1_name, d.sh1_model, d.sh1_screensize, d.sh1_runninghour],
+    ['Mode of Operation', '', d.cf1_modeofopr, d.cf2_modeofopr, d.cf3_modeofopr, d.sh2_name, d.sh2_model, d.sh2_screensize, d.sh2_runninghour],
+    ['Bowl-Conveyor Wear Reading', '(mm)', d.cf1_weirplate, d.cf2_weirplate, d.cf3_weirplate, d.sh3_name, d.sh3_model, d.sh3_screensize, d.sh3_runninghour],
+    ['Bowl Speed', '(rpm)', d.cf1_bowlspeed, d.cf2_bowlspeed, d.cf3_bowlspeed, d.sh4_name, d.sh4_model, d.sh4_screensize, d.sh4_runninghour],
+    ['Bowl-Conveyor Differential Speed', '(rpm)', d.cf1_bowlconv, d.cf2_bowlconv, d.cf3_bowlconv, d.sh5_name, d.sh5_model, d.sh5_screensize, d.sh5_runninghour],
+    ['Feed-in Suction from', '', d.cf1_feedsuc, d.cf2_feedsuc, d.cf3_feedsuc, d.sh6_name, d.sh6_model, d.sh6_screensize, d.sh6_runninghour]
+  ];
+
+  for (const r of shakerRows) {
+    y = row(doc, x, y, width, [
+      textCell(r[0], 19, { bold: false }),
+      textCell(r[1], 5, { align: 'right' }),
+      textCell(r[2], 9, { align: 'center' }),
+      textCell(r[3], 9.5, { align: 'center' }),
+      textCell(r[4], 10, { align: 'center' }),
+      textCell(r[5], 10, { align: 'center' }),
+      textCell(r[6], 15, { align: 'center' }),
+      textCell(r[7], 15, { align: 'center' }),
+      textCell(r[8], 7.5, { align: 'center' })
+    ], { height: 9.2, fontSize: 4.75 });
+  }
+
+  y = row(doc, x, y, width, [
+    textCell('Effluent Return to', 19.5),
+    textCell('', 5),
+    textCell(d.cf1_effluentreturn, 9.5, { align: 'center' }),
+    textCell(d.cf2_effluentreturn, 9.5, { align: 'center' }),
+    textCell(d.cf3_effluentreturn, 10.5, { align: 'center' }),
+    textCell('Screens Changed', 14, { align: 'center' }),
+    textCell(d.screens_changed, 32, { align: 'left' })
+  ], { height: 9.4, fontSize: 4.75 });
+
+  y = row(doc, x, y, width, [
+    textCell('Underflow Discharge to', 19),
+    textCell('', 5),
+    textCell(d.cf1_underflow, 9, { align: 'center' }),
+    textCell(d.cf2_underflow, 9.5, { align: 'center' }),
+    textCell(d.cf3_underflow, 10, { align: 'center' }),
+    greenCell('DESANDER', 23),
+    greenCell('DESILTER', 24.5)
+  ], { height: 10, fontSize: 4.8 });
+
+  const combined = [
+    ['Running Hours', '(hrs)', d.cf1_runninghour, d.cf2_runninghour, d.cf3_runninghour, 'Running Hours', ds.run_hour, 'Running Hours', di.run_hour],
+    ['Feed-in Rate (Flow Rate)', '(gal/min)', d.cf1_feedinrate, d.cf2_feedinrate, d.cf3_feedinrate, 'Feed Rate (gal/min)', ds.feed_rate, 'Feed Rate (gal/min)', di.feed_rate],
+    ['Feed-in Density (WT In)', `(${val(d.mwunit)})`, d.cf1_feedindensity, d.cf2_feedindensity, d.cf3_feedindensity, 'Feed Density', ds.feed_dens, 'Feed Density', di.feed_dens],
+    ['Centrate Density (WT Out)', `(${val(d.mwunit)})`, d.cf1_centratedens, d.cf2_centratedens, d.cf3_centratedens, 'Overflow Density', ds.overflow_dens, 'Overflow Density', di.overflow_dens],
+    ['Cake Discard Density (Discard WT)', `(${val(d.mwunit)})`, d.cf1_cakediscdens, d.cf2_cakediscdens, d.cf3_cakediscdens, 'Underflow Density', ds.underflow_dens, 'Underflow Density', di.underflow_dens],
+    ['Centrate Return Rate', '(gal/min)', d.cf1_centratereturn, d.cf2_centratereturn, d.cf3_centratereturn, 'Vol Discharge (bbls)', ds.vol_discharge, 'Vol Discharge (bbls)', di.vol_discharge],
+    ['Cake Discard Flow Rate', '(gal/min)', d.cf1_cakediscflow, d.cf2_cakediscflow, d.cf3_cakediscflow, 'Mud-on-Cuttings', ds.mudoncuttings, 'Mud-on-Cuttings', di.mudoncuttings],
+    ['Mass Cake Discharge', '(kg)', d.cf1_masscake, d.cf2_masscake, d.cf3_masscake, 'Vol Mud Discharge (bbls)', ds.volmud_discharge, 'Vol Mud Discharge (bbls)', di.volmud_discharge],
+    ['Volume Cake Discharge', `(${val(d.volholeunit)})`, d.cf1_volcake, d.cf2_volcake, d.cf3_volcake, 'Head Pressure (psi)', ds.head_pressure, 'Head Pressure (psi)', di.head_pressure]
+  ];
+
+  for (const r of combined) {
+    y = row(doc, x, y, width, [
+      textCell(r[0], 19),
+      textCell(r[1], 5, { align: 'right' }),
+      textCell(r[2], 9, { align: 'center' }),
+      textCell(r[3], 9.5, { align: 'center' }),
+      textCell(r[4], 10, { align: 'center' }),
+      textCell(r[5], 15, { fontSize: 4.35 }),
+      textCell(r[6], 8, { align: 'center' }),
+      textCell(r[7], 15, { fontSize: 4.35 }),
+      textCell(r[8], 9.5, { align: 'center' })
+    ], { height: 9.2, fontSize: 4.65 });
+  }
+
+  return y;
+}
+
+function drawOocChart(doc, retort, x, y, width, height) {
+  cell(doc, x, y, width, height, '', { border: true });
+
+  const labels = ['Shakers', 'Dryer', "C'fuge 1", "C'fuge 2", "C'fuge 3"];
+  const values = [
+    numeric(retort.rt_sh_ooc),
+    numeric(retort.rt_cdu_ooc),
+    numeric(retort.rt_cf1_ooc),
+    numeric(retort.rt_cf2_ooc),
+    numeric(retort.rt_cf3_ooc)
+  ].map(v => Math.max(0, Math.min(100, v)));
+
+  const chartX = x + 13;
+  const chartY = y + 13;
+  const chartW = width - 22;
+  const chartH = height - 29;
+  const baseY = chartY + chartH;
+
+  doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(5.3)
+    .text('% Oil-on-Cuttings', x + 2, y + 3, { width: width - 4, align: 'center' });
+
+  doc.save()
+    .strokeColor(BORDER)
+    .lineWidth(0.35)
+    .moveTo(chartX, chartY)
+    .lineTo(chartX, baseY)
+    .lineTo(chartX + chartW, baseY)
+    .stroke()
+    .restore();
+
+  for (let t = 0; t <= 100; t += 20) {
+    const ty = baseY - chartH * (t / 100);
+    doc.fillColor(GREY).font('Helvetica').fontSize(3.7)
+      .text(String(t), x + 1, ty - 2, { width: 10, align: 'right' });
+    doc.save()
+      .strokeColor('#dddddd')
+      .lineWidth(0.2)
+      .moveTo(chartX, ty)
+      .lineTo(chartX + chartW, ty)
+      .stroke()
+      .restore();
+  }
+
+  const barGap = 4;
+  const barW = Math.max(7, (chartW - barGap * 6) / 5);
+
+  values.forEach((v, i) => {
+    const bx = chartX + barGap + i * (barW + barGap);
+    const bh = chartH * (v / 100);
+    const by = baseY - bh;
+
+    doc.save().rect(bx, by, barW, bh).fill(GREEN).restore();
+    doc.fillColor(BLACK).font('Helvetica').fontSize(3.6)
+      .text(v.toFixed(1), bx - 1, by - 5, { width: barW + 2, align: 'center' });
+    doc.fillColor(BLACK).fontSize(3.4)
+      .text(labels[i], bx - 4, baseY + 2, { width: barW + 8, align: 'center' });
+  });
+}
+
+function drawRetort(doc, data, x, y, width) {
+  const d = data.details;
+  const r = data.retort;
+  const c = data.bypassed;
+  const w = data.dailyWaste;
+  const a = data.additional;
+  const p = data.personnel;
+
+  const leftPct = 72.2;
+  const rightPct = 27.8;
+  const leftW = width * leftPct / 100;
+  const rightW = width - leftW;
+  const rightX = x + leftW;
+
+  y = row(doc, x, y, width, [
+    greenCell('RETORT WORKSHEET\n& VOLUME DISCHARGE', 25),
+    greenCell('Shakers\nOverflow', 9.5),
+    greenCell('Dryer', 9.5),
+    greenCell('Centrifuge 1', 9.5),
+    greenCell('Centrifuge 2', 9.5),
+    greenCell('Centrifuge 3', 9.2),
+    greenCell('Cuttings By-Passed (to Overboard)', 27.8)
+  ], { height: 14, fontSize: 4.8 });
+
+  y = row(doc, x, y, width, [
+    textCell('Type/Model', 19.5),
+    textCell('', 5.5),
+    textCell(d.sh1_model, 9.5, { align: 'center' }),
+    textCell(d.cdu1_model, 9.5, { align: 'center' }),
+    textCell(d.cf1_model, 9.5, { align: 'center' }),
+    textCell(d.cf2_model, 9.5, { align: 'center' }),
+    textCell(d.cf3_model, 9.2, { align: 'center' }),
+    textCell(`Percentage(%) : ${val(c.percentage)}\nVolume (bbls) : ${val(c.volume)}`, 13.9, { fontSize: 4.2 }),
+    textCell(`from depth : ${val(c.from_depth)} ${val(c.each_from_depth, '')}\nto depth : ${val(c.to_depth)} ${val(c.each_to_depth, '')}`, 13.9, { fontSize: 4.2 })
+  ], { height: 13, fontSize: 4.6 });
+
+  const leftWidths = [19.5, 5.5, 9.5, 9.5, 9.2, 9.5, 9.5];
+  const rowsTop = [
+    ['Sample Time', '', sampleTime(r.rt_sh_sampletime), sampleTime(r.rt_cdu_sampletime), sampleTime(r.rt_cf1_sampletime), sampleTime(r.rt_cf2_sampletime), sampleTime(r.rt_cf3_sampletime)],
+    ['Sample Depth', '(feet)', r.rt_sh_sampledepth, r.rt_cdu_sampledepth, r.rt_cf1_sampledepth, r.rt_cf2_sampledepth, r.rt_cf3_sampledepth],
+    ['% Base Fluids fr whole Mud', '(%)', d.basefluid, d.basefluid, d.basefluid, d.basefluid, d.basefluid]
+  ];
+
+  for (let i = 0; i < rowsTop.length; i++) {
+    const rr = rowsTop[i];
+    y = row(doc, x, y, width, [
+      textCell(rr[0], 19.5),
+      textCell(rr[1], 5.5, { align: 'right' }),
+      textCell(rr[2], 9.5, { align: 'center' }),
+      textCell(rr[3], 9.5, { align: 'center' }),
+      textCell(rr[4], 9.2, { align: 'center' }),
+      textCell(rr[5], 9.5, { align: 'center' }),
+      textCell(rr[6], 9.5, { align: 'center' }),
+      ...(i === 0
+        ? [greenCell('Daily Waste & Average MOC', 27.8)]
+        : i === 1
+          ? [textCell(`Daily Waste Generated (Mud & Cuttings), (bbls) : ${val(w.dailywaste_generated)}`, 27.8, { fontSize: 4.2 })]
+          : [
+              textCell(`Average MOC : ${val(w.avg_moc)}`, 13.9, { fontSize: 4.2 }),
+              textCell(`Avg Discharge %OOC : ${val(w.avg_discharge)}`, 13.9, { fontSize: 4.0 })
+            ])
+    ], { height: 10, fontSize: 4.55 });
+  }
+
+  const chartTop = y;
+  const chartRows = 11;
+  const chartRowH = 9.2;
+  const chartH = chartRows * chartRowH;
+  drawOocChart(doc, r, rightX, chartTop, rightW, chartH);
+
+  const retortRows = [
+    ['SG Base Fluids', '(sp.gr)', d.sgbasefluid, d.sgbasefluid, d.sgbasefluid, d.sgbasefluid, d.sgbasefluid],
+    ['SG Drill Solids/Cuttings', '(sp.gr)', d.sgdrillsolid, d.sgdrillsolid, d.sgdrillsolid, d.sgdrillsolid, d.sgdrillsolid],
+    ['Empty Retort Cell Wt', '(gm)', r.rt_sh_emptycell, r.rt_cdu_emptycell, r.rt_cf1_emptycell, r.rt_cf2_emptycell, r.rt_cf3_emptycell],
+    ['Cell + Wet Sample Wt', '(gm)', r.rt_sh_emptycellwetsamp, r.rt_cdu_emptycellwetsamp, r.rt_cf1_emptycellwetsamp, r.rt_cf2_emptycellwetsamp, r.rt_cf3_emptycellwetsamp],
+    ['Cell + Dry Cuttings Wt', '(gm)', r.rt_sh_celldrycut, r.rt_cdu_celldrycut, r.rt_cf1_celldrycut, r.rt_cf2_celldrycut, r.rt_cf3_celldrycut],
+    ['Empty Grad. Cyl. Wt', '(gm)', r.rt_sh_emptycylinder, r.rt_cdu_emptycylinder, r.rt_cf1_emptycylinder, r.rt_cf2_emptycylinder, r.rt_cf3_emptycylinder],
+    ['Water Vol in Cylinder', '(cc)', r.rt_sh_watervolin, r.rt_cdu_watervolin, r.rt_cf1_watervolin, r.rt_cf2_watervolin, r.rt_cf3_watervolin],
+    ['Base Fluids Vol in Cylinder', '(cc)', r.rt_sh_basefluidvolincyl, r.rt_cdu_basefluidvolincyl, r.rt_cf1_basefluidvolincyl, r.rt_cf2_basefluidvolincyl, r.rt_cf3_basefluidvolincyl],
+    ['Wt Cyl+Water+BaseFluids', '(gm)', r.rt_sh_wtcylwaterbf, r.rt_cdu_wtcylwaterbf, r.rt_cf1_wtcylwaterbf, r.rt_cf2_wtcylwaterbf, r.rt_cf3_wtcylwaterbf],
+    ['Mass of Wet Cuttings', '(gm)', r.rt_sh_massofcutting, r.rt_cdu_massofcutting, r.rt_cf1_massofcutting, r.rt_cf2_massofcutting, r.rt_cf3_massofcutting],
+    ['Mass of Dry Cuttings', '(gm)', r.rt_sh_massofdry, r.rt_cdu_massofdry, r.rt_cf1_massofdry, r.rt_cf2_massofdry, r.rt_cf3_massofdry]
+  ];
+
+  for (const rr of retortRows) {
+    y = row(doc, x, y, leftW, [
+      textCell(rr[0], 19.5 / leftPct * 100),
+      textCell(rr[1], 5.5 / leftPct * 100, { align: 'right' }),
+      textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
+      textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
+      textCell(rr[4], 9.2 / leftPct * 100, { align: 'center' }),
+      textCell(rr[5], 9.5 / leftPct * 100, { align: 'center' }),
+      textCell(rr[6], 9.5 / leftPct * 100, { align: 'center' })
+    ], { height: chartRowH, fontSize: 4.4 });
+  }
+
+  const rigTop = y;
+  const rigRows = 5;
+  const rigH = rigRows * chartRowH;
+  cell(doc, rightX, rigTop, rightW, chartRowH, 'RIG / OTHER ACTIVITIES', {
+    fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.9
+  });
+  cell(doc, rightX, rigTop + chartRowH, rightW, rigH - chartRowH, a.rigactivity, {
+    align: 'left', fontSize: 4.2, padX: 3, padY: 3
+  });
+
+  const postChartRows = [
+    ['Wt of Water & Base Fluids', '(gm)', r.rt_sh_wtofwaterbf, r.rt_cdu_wtofwaterbf, r.rt_cf1_wtofwaterbf, r.rt_cf2_wtofwaterbf, r.rt_cf3_wtofwaterbf],
+    ['Mass of Base Fluids', '(gm)', r.rt_sh_massofbf, r.rt_cdu_massofbf, r.rt_cf1_massofbf, r.rt_cf2_massofbf, r.rt_cf3_massofbf],
+    ['Mud-on-Cuttings', '(vol/vol)', r.rt_sh_mudoncutting, r.rt_cdu_mudoncutting, r.rt_cf1_mudoncutting, r.rt_cf2_mudoncutting, r.rt_cf3_mudoncutting],
+    ['Oil-on-Cuttings (w.m)', '(%)', r.rt_sh_ooc, r.rt_cdu_ooc, r.rt_cf1_ooc, r.rt_cf2_ooc, r.rt_cf3_ooc],
+    ['% of Cuttings Discharged', '(%)', r.rt_sh_percofcutting, r.rt_cdu_percofcutting, r.rt_cf1_percofcutting, r.rt_cf2_percofcutting, r.rt_cf3_percofcutting]
+  ];
+
+  for (const rr of postChartRows) {
+    y = row(doc, x, y, leftW, [
+      textCell(rr[0], 19.5 / leftPct * 100, { bold: ['Mud-on-Cuttings', 'Oil-on-Cuttings (w.m)'].includes(rr[0]) }),
+      textCell(rr[1], 5.5 / leftPct * 100, { align: 'right' }),
+      textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
+      textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
+      textCell(rr[4], 9.2 / leftPct * 100, { align: 'center' }),
+      textCell(rr[5], 9.5 / leftPct * 100, { align: 'center' }),
+      textCell(rr[6], 9.5 / leftPct * 100, { align: 'center' })
+    ], { height: chartRowH, fontSize: 4.4 });
+  }
+
+  const dwmTop = y;
+  const dwmRows = 5;
+  const dwmH = dwmRows * chartRowH;
+  cell(doc, rightX, dwmTop, rightW, chartRowH, 'STEP OIL TOOLS ACTIVITIES', {
+    fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.9
+  });
+  cell(doc, rightX, dwmTop + chartRowH, rightW, dwmH - chartRowH, a.bssactivity, {
+    align: 'left', fontSize: 4.2, padX: 3, padY: 3
+  });
+
+  const finalRetortRows = [
+    ['Vol Oil Discharge', val(d.volholeunit), r.rt_sh_volbfoildisc, r.rt_cdu_volbfoildisc, r.rt_cf1_volbfoildisc, r.rt_cf2_volbfoildisc, r.rt_cf3_volbfoildisc],
+    ['Vol Mud Discharge', val(d.volholeunit), r.rt_sh_volmuddisc, r.rt_cdu_volmuddisc, r.rt_cf1_volmuddisc, r.rt_cf2_volmuddisc, r.rt_cf3_volmuddisc]
+  ];
+
+  for (const rr of finalRetortRows) {
+    y = row(doc, x, y, leftW, [
+      textCell(rr[0], 19.5 / leftPct * 100),
+      textCell(rr[1], 5.5 / leftPct * 100, { align: 'right' }),
+      textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
+      textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
+      textCell(rr[4], 9.2 / leftPct * 100, { align: 'center' }),
+      textCell(rr[5], 9.5 / leftPct * 100, { align: 'center' }),
+      textCell(rr[6], 9.5 / leftPct * 100, { align: 'center' })
+    ], { height: chartRowH, fontSize: 4.4 });
+  }
+
+  y = Math.max(y, dwmTop + dwmH);
+
+  y = row(doc, x, y, leftW, [
+    textCell('Oil Recovered', 27, { align: 'center', bold: true }),
+    textCell('Mud Recovered', 21, { align: 'center', bold: true }),
+    textCell('Cumulative Oil / Mud Recovered', 52, { align: 'center', bold: true })
+  ], { height: 9.2, fontSize: 4.6 });
+
+  y = row(doc, x, y, leftW, [
+    textCell(`${val(r.oil_recovered)} ${val(d.volholeunit, '')} (oil)`, 27, { align: 'center' }),
+    textCell(`${val(r.mud_recovered)} ${val(d.volholeunit, '')} (mud)`, 21, { align: 'center' }),
+    textCell(`${val(r.cum_oil)} ${val(d.volholeunit, '')} (oil)     ${val(r.cum_mud)} ${val(d.volholeunit, '')} (mud)`, 52, { align: 'center' })
+  ], { height: 9.2, fontSize: 4.3 });
+
+  y = row(doc, x, y, leftW, [
+    greenCell('Day', 27, { align: 'left' }),
+    greenCell('STEP OIL TOOLS ENGINEERS', 47),
+    greenCell('Night', 26, { align: 'right' })
+  ], { height: 9.2, fontSize: 4.7 });
+
+  y = row(doc, x, y, leftW, [
+    textCell(p.ds1_name, 50, { align: 'center' }),
+    textCell(p.ns1_name, 50, { align: 'center' })
+  ], { height: 9.2, fontSize: 4.5 });
+
+  y = row(doc, x, y, leftW, [
+    textCell(p.ds2_name, 50, { align: 'center' }),
+    textCell(p.ns2_name, 50, { align: 'center' })
+  ], { height: 9.2, fontSize: 4.5 });
+
+  return y;
+}
+
+function footer(doc) {
   const generated = new Intl.DateTimeFormat('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
     timeZone: process.env.APP_TIMEZONE || 'Asia/Jakarta'
   }).format(new Date());
 
-  for (let i = range.start; i < range.start + range.count; i++) {
-    doc.switchToPage(i);
-    const y = doc.page.height - 15;
-    doc.fillColor(MUTED).font('Helvetica').fontSize(5.2)
-      .text(`Generated by DWM · ${generated}`, doc.page.margins.left, y, { align: 'left' })
-      .text(`Page ${i - range.start + 1} / ${range.count}`, 0, y, {
-        width: doc.page.width - doc.page.margins.right,
+  doc.fillColor(GREY).font('Helvetica').fontSize(4.6)
+    .text(
+      `Generated by DWM on ${generated}`,
+      doc.page.margins.left,
+      doc.page.height - 13,
+      {
+        width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
         align: 'right'
-      });
-  }
+      }
+    );
 }
 
 export function pipeDailyReportPdf(res, data) {
-  const { project, report, details, retort, desander, desilter, bypassed, dailyWaste, personnel, additional } = data;
-
   const doc = new PDFDocument({
-    size: 'A4',
-    layout: 'landscape',
-    margin: 18,
+    size: PAGE.size,
+    layout: PAGE.layout,
+    margins: {
+      top: PAGE.margin,
+      right: PAGE.margin,
+      bottom: PAGE.margin,
+      left: PAGE.margin
+    },
+    compress: true,
     bufferPages: true,
     info: {
-      Title: `DWM Daily Report ${show(report.urut, report.id_wellinfo)}`,
+      Title: `DWM Daily Report ${val(data.report.urut, data.report.id_wellinfo)}`,
       Author: 'DWM'
     }
   });
 
   doc.pipe(res);
 
-  const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  doc.fillColor(DARK).font('Helvetica-Bold').fontSize(16)
-    .text(`DWM DAILY REPORT NO. ${show(report.urut, report.id_wellinfo)}`, { align: 'center' });
-  doc.font('Helvetica').fontSize(6.5).fillColor(MUTED)
-    .text(`${show(project.operator_name)} · ${show(project.contract)} · ${show(project.drillingrig)}`, { align: 'center' });
-  doc.moveDown(0.6);
+  const x = 15;
+  const width = doc.page.width - 30;
 
-  sectionTitle(doc, 'WELL INFORMATION');
-  keyValueGrid(doc, [
-    ['Operator', project.operator_name],
-    ['Well Name', report.wellname],
-    ['Date', report.curdate],
-    ['Location', report.location],
-    ['Current Depth', `${show(details.curdepth)} ${show(details.depth_each, '')}`.trim()],
-    ['Depth 1 Day Before', `${show(details.depth1bef)} ${show(details.depth_each, '')}`.trim()],
-    ['Operator Rep', report.companyman],
-    ['Contractor Rep / OIM', report.oim],
-    ['Spud-in Date', report.spud_date],
-    ['Drilling Rig', project.drillingrig],
-    ['Bit Size', `${show(details.bitsize)} inch`],
-    ['Bit Type', details.bittype],
-    ['Washout', `${show(details.washout)} %`],
-    ['Vol. Hole Drilled', `${show(details.volholedrill)} ${show(details.volholeunit, '')}`.trim()],
-    ['Average ROP', details.avgrop]
-  ], 3);
+  // Same visual shell as legacy Blade: thin body border inside 10 px page margin.
+  doc.save()
+    .lineWidth(0.5)
+    .strokeColor(BORDER)
+    .rect(10, 10, doc.page.width - 20, doc.page.height - 20)
+    .stroke()
+    .restore();
 
-  sectionTitle(doc, 'ACTIVE MUD PROPERTIES');
-  keyValueGrid(doc, [
-    ['Fluid Type', fluidName(details.fluidtype)],
-    ['Mud Weight', `${show(details.mudweight)} ${show(details.mwunit, '')}`.trim()],
-    ['PV', details.pv],
-    ['YP', details.yp],
-    ['LGS % Active', details.lgsactive],
-    ['HGS % Active', details.hgsactive],
-    ['Sand Content', details.sandcontent],
-    ['Chlorides', details.chlorides],
-    ['Mud Temperature', `${show(details.mudtemp)} ${details.tempunit === 'degc' ? '°C' : details.tempunit === 'degf' ? '°F' : ''}`.trim()],
-    ['Base Fluid', `${show(details.basefluid)} %`],
-    ['SG Base Fluid', details.sgbasefluid],
-    ['SG Drill Solids', details.sgdrillsolid],
-    ['Circulating Rate', `${show(details.cirrategpm)} gpm`],
-    ['Active System Vol.', details.activesysvol],
-    ['Rig Present Activity', details.rigpresentact]
-  ], 3);
+  let y = 15;
+  y = drawHeader(doc, data, x, y, width);
+  y = drawWellInfo(doc, data, x, y, width);
+  y = drawActiveMud(doc, data, x, y, width);
+  y = drawEquipment(doc, data, x, y, width);
+  y = drawRetort(doc, data, x, y, width);
 
-  sectionTitle(doc, 'CENTRIFUGES & SHALE SHAKERS');
-  const equipWidth = pageWidth;
-  const eqWidths = [135, 35, 82, 82, 82, 70, 120, 105, 52];
-  const centrifugeRows = [
-    ['Serial Number', '', details.cf1_sn, details.cf2_sn, details.cf3_sn, details.sh1_name, details.sh1_model, details.sh1_screensize, details.sh1_runninghour],
-    ['Mode of Operation', '', details.cf1_modeofopr, details.cf2_modeofopr, details.cf3_modeofopr, details.sh2_name, details.sh2_model, details.sh2_screensize, details.sh2_runninghour],
-    ['Bowl-Conveyor Wear', 'mm', details.cf1_weirplate, details.cf2_weirplate, details.cf3_weirplate, details.sh3_name, details.sh3_model, details.sh3_screensize, details.sh3_runninghour],
-    ['Bowl Speed', 'rpm', details.cf1_bowlspeed, details.cf2_bowlspeed, details.cf3_bowlspeed, details.sh4_name, details.sh4_model, details.sh4_screensize, details.sh4_runninghour],
-    ['Differential Speed', 'rpm', details.cf1_bowlconv, details.cf2_bowlconv, details.cf3_bowlconv, details.sh5_name, details.sh5_model, details.sh5_screensize, details.sh5_runninghour],
-    ['Feed-in Suction', '', details.cf1_feedsuc, details.cf2_feedsuc, details.cf3_feedsuc, details.sh6_name, details.sh6_model, details.sh6_screensize, details.sh6_runninghour],
-    ['Effluent Return', '', details.cf1_effluentreturn, details.cf2_effluentreturn, details.cf3_effluentreturn, 'Screens Changed', details.screens_changed, '', ''],
-    ['Underflow Discharge', '', details.cf1_underflow, details.cf2_underflow, details.cf3_underflow, '', '', '', ''],
-    ['Running Hours', 'hr', details.cf1_runninghour, details.cf2_runninghour, details.cf3_runninghour, '', '', '', ''],
-    ['Feed-in Rate', '', details.cf1_feedinrate, details.cf2_feedinrate, details.cf3_feedinrate, '', '', '', ''],
-    ['Feed-in Density', '', details.cf1_feedindensity, details.cf2_feedindensity, details.cf3_feedindensity, '', '', '', ''],
-    ['Centrate Density', '', details.cf1_centratedens, details.cf2_centratedens, details.cf3_centratedens, '', '', '', ''],
-    ['Cake Discharge Density', '', details.cf1_cakediscdens, details.cf2_cakediscdens, details.cf3_cakediscdens, '', '', '', ''],
-    ['Cake Discharge Flow', '', details.cf1_cakediscflow, details.cf2_cakediscflow, details.cf3_cakediscflow, '', '', '', '']
-  ];
-  table(
-    doc,
-    ['Parameter', 'Unit', 'Centrifuge 1', 'Centrifuge 2', 'Centrifuge 3', 'Shaker', 'Model', 'Screen Size', 'Run Hr'],
-    centrifugeRows,
-    eqWidths,
-    { rowHeight: 15, headerHeight: 19, font: 5.2, headerFont: 5.4, boldFirst: true, leftFirst: true }
-  );
+  footer(doc);
 
-  sectionTitle(doc, 'CUTTING DRYERS / DESANDER / DESILTER');
-  table(doc,
-    ['Parameter', 'Cutting Dryer 1', 'Cutting Dryer 2', 'Desander', 'Desilter'],
-    [
-      ['Serial / Run Hour', details.cdu1_sn, details.cdu2_sn, desander.run_hour, desilter.run_hour],
-      ['Model / Feed Rate', details.cdu1_model, details.cdu2_model, desander.feed_rate, desilter.feed_rate],
-      ['Screen / Feed Density', details.cdu1_screensize, details.cdu2_screensize, desander.feed_dens, desilter.feed_dens],
-      ['Running Hour / Overflow Density', details.cdu1_runninghour, details.cdu2_runninghour, desander.overflow_dens, desilter.overflow_dens],
-      ['Centrate / Underflow Density', details.cdu1_centrateppg, details.cdu2_centrateppg, desander.underflow_dens, desilter.underflow_dens],
-      ['Sample Depth / Discharge Volume', details.cdu1_sampledepth, details.cdu2_sampledepth, desander.vol_discharge, desilter.vol_discharge],
-      ['Mud on Cuttings', '-', '-', desander.mudoncuttings, desilter.mudoncuttings],
-      ['Mud Discharge', '-', '-', desander.volmud_discharge, desilter.volmud_discharge],
-      ['Head Pressure', '-', '-', desander.head_pressure, desilter.head_pressure]
-    ],
-    [180, 150, 150, 160, 160],
-    { rowHeight: 16, headerHeight: 19, font: 5.5, boldFirst: true, leftFirst: true }
-  );
-
-  sectionTitle(doc, 'RETORT WORKSHEET');
-  const prefixes = [
-    ['sh', 'Shaker'],
-    ['cdu', 'Cutting Dryer'],
-    ['cf1', 'Centrifuge 1'],
-    ['cf2', 'Centrifuge 2'],
-    ['cf3', 'Centrifuge 3']
-  ];
-  const retortRows = [
-    ['Sample Time', ...prefixes.map(([p]) => {
-      const v = retort[`rt_${p}_sampletime`];
-      if (v === null || v === undefined || v === '') return '-';
-      const mins = Number(v);
-      if (!Number.isFinite(mins)) return show(v);
-      return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
-    })],
-    ['Sample Depth', ...prefixes.map(([p]) => retort[`rt_${p}_sampledepth`])],
-    ['Empty Cell (gm)', ...prefixes.map(([p]) => retort[`rt_${p}_emptycell`])],
-    ['Cell + Wet Sample (gm)', ...prefixes.map(([p]) => retort[`rt_${p}_emptycellwetsamp`])],
-    ['Cell + Dry Cuttings (gm)', ...prefixes.map(([p]) => retort[`rt_${p}_celldrycut`])],
-    ['Empty Cylinder (gm)', ...prefixes.map(([p]) => retort[`rt_${p}_emptycylinder`])],
-    ['Water Vol. Cylinder (ml)', ...prefixes.map(([p]) => retort[`rt_${p}_watervolin`])],
-    ['Base Fluid Vol. Cylinder', ...prefixes.map(([p]) => retort[`rt_${p}_basefluidvolincyl`])],
-    ['Wt Cyl + Water/BF', ...prefixes.map(([p]) => retort[`rt_${p}_wtcylwaterbf`])],
-    ['Mass Wet Cuttings', ...prefixes.map(([p]) => retort[`rt_${p}_massofcutting`])],
-    ['Mass Dry Cuttings', ...prefixes.map(([p]) => retort[`rt_${p}_massofdry`])],
-    ['Wt Water & Base Fluid', ...prefixes.map(([p]) => retort[`rt_${p}_wtofwaterbf`])],
-    ['Mass Base Fluid', ...prefixes.map(([p]) => retort[`rt_${p}_massofbf`])],
-    ['Mud-on-Cuttings', ...prefixes.map(([p]) => retort[`rt_${p}_mudoncutting`])],
-    ['Oil-on-Cuttings %', ...prefixes.map(([p]) => retort[`rt_${p}_ooc`])],
-    ['% Cuttings Discharged', ...prefixes.map(([p]) => retort[`rt_${p}_percofcutting`])],
-    ['Vol Oil Discharge', ...prefixes.map(([p]) => retort[`rt_${p}_volbfoildisc`])],
-    ['Vol Mud Discharge', ...prefixes.map(([p]) => retort[`rt_${p}_volmuddisc`])]
-  ];
-  table(
-    doc,
-    ['Parameter', ...prefixes.map(([, label]) => label)],
-    retortRows,
-    [220, 112, 112, 112, 112, 112],
-    { rowHeight: 14, headerHeight: 18, font: 5.1, headerFont: 5.3, boldFirst: true, leftFirst: true }
-  );
-
-  sectionTitle(doc, 'RECOVERY / DAILY WASTE');
-  keyValueGrid(doc, [
-    ['Oil Recovered', `${show(retort.oil_recovered)} ${show(details.volholeunit, '')}`.trim()],
-    ['Mud Recovered', `${show(retort.mud_recovered)} ${show(details.volholeunit, '')}`.trim()],
-    ['Cumulative Oil', `${show(retort.cum_oil)} ${show(details.volholeunit, '')}`.trim()],
-    ['Cumulative Mud', `${show(retort.cum_mud)} ${show(details.volholeunit, '')}`.trim()],
-    ['Daily Waste Generated', dailyWaste.dailywaste_generated],
-    ['Average MOC', dailyWaste.avg_moc],
-    ['Average Discharge %OOC', dailyWaste.avg_discharge],
-    ['Cuttings By-Passed', `${show(bypassed.percentage)} % / ${show(bypassed.volume)} bbls`]
-  ], 4);
-
-  drawOocChart(doc, retort);
-
-  sectionTitle(doc, 'DWM PERSONNEL & ACTIVITIES');
-  keyValueGrid(doc, [
-    ['Day Shift 1', personnel.ds1_name],
-    ['Day Shift 2', personnel.ds2_name],
-    ['Night Shift 1', personnel.ns1_name],
-    ['Night Shift 2', personnel.ns2_name]
-  ], 4);
-
-  ensureSpace(doc, 72);
-  const x = doc.page.margins.left;
-  const w = (doc.page.width - doc.page.margins.left - doc.page.margins.right - 8) / 2;
-  const y = doc.y;
-  for (const [title, text, offset] of [
-    ['RIG / OTHER ACTIVITIES', additional.rigactivity, 0],
-    ['DWM ACTIVITIES', additional.bssactivity, w + 8]
-  ]) {
-    doc.save().rect(x + offset, y, w, 62).strokeColor(LINE).lineWidth(0.4).stroke().restore();
-    doc.fillColor(GREEN).font('Helvetica-Bold').fontSize(6.2)
-      .text(title, x + offset + 5, y + 5, { width: w - 10 });
-    doc.fillColor(DARK).font('Helvetica').fontSize(6)
-      .text(show(text, 'No activity recorded.'), x + offset + 5, y + 17, {
-        width: w - 10,
-        height: 39,
-        ellipsis: true
-      });
-  }
-  doc.y = y + 66;
-
-  addFooters(doc);
   doc.end();
 }
