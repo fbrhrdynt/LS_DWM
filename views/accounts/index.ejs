@@ -1,0 +1,130 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Administration</p>
+      <h1>Accounts</h1>
+      <p class="muted">Manage access without exposing project data to unrelated users.</p>
+    </div>
+  </div>
+
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+  <% if (error) { %><div class="alert error"><%= error %></div><% } %>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <h2>Add account</h2>
+        <p class="muted">Operator and Staff accounts must be assigned to a project.</p>
+      </div>
+    </div>
+
+    <form method="post" action="/accounts" class="form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label>
+        <span>Employee ID</span>
+        <input name="employee_id" maxlength="20" value="<%= values.employee_id || '' %>" required>
+      </label>
+
+      <label>
+        <span>Employee name</span>
+        <input name="employee_name" maxlength="255" value="<%= values.employee_name || '' %>" required>
+      </label>
+
+      <label>
+        <span>Email</span>
+        <input name="email" type="email" maxlength="100" value="<%= values.email || '' %>">
+      </label>
+
+      <label>
+        <span>Username</span>
+        <input name="kode_login" maxlength="255" value="<%= values.kode_login || '' %>" required>
+      </label>
+
+      <label>
+        <span>Password</span>
+        <input name="pass_login" type="password" minlength="8" autocomplete="new-password" required>
+      </label>
+
+      <label>
+        <span>Level</span>
+        <select name="level" data-role-select required>
+          <option value="" <%= !values.level ? 'selected' : '' %> disabled>Select level</option>
+          <% ['MASTER', 'Supervisor', 'Operator', 'Staff'].forEach(level => { %>
+            <option value="<%= level %>" <%= values.level === level ? 'selected' : '' %>><%= level %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label class="project-field">
+        <span>Assigned project</span>
+        <select name="id_project">
+          <option value="">Select project</option>
+          <% projects.forEach(project => { %>
+            <option value="<%= project.id_project %>" <%= String(values.id_project || '') === String(project.id_project) ? 'selected' : '' %>>
+              <%= project.operator_name || project.contract || 'Project' %> · <%= project.drillingrig || '-' %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit">Add account</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <h2>Users</h2>
+        <p class="muted"><%= accounts.length %> account(s)</p>
+      </div>
+    </div>
+
+    <div class="responsive-list">
+      <% accounts.forEach(account => { %>
+        <article class="management-row">
+          <div class="management-main">
+            <strong><%= account.employee_name %></strong>
+            <p><%= account.employee_id %> · @<%= account.kode_login %></p>
+            <div class="meta-row">
+              <span class="badge"><%= account.level %></span>
+              <span class="badge <%= account.status === 'Y' ? 'badge-success' : 'badge-muted' %>">
+                <%= account.status === 'Y' ? 'Active' : 'Inactive' %>
+              </span>
+              <span class="muted">
+                <%= ['MASTER', 'Supervisor'].includes(account.level)
+                  ? 'All projects'
+                  : (account.operator_name || 'No project') %>
+              </span>
+            </div>
+          </div>
+
+          <div class="row-actions">
+            <a class="secondary-button" href="/accounts/<%= account.id_user %>/edit">Edit</a>
+
+            <% if (Number(account.id_user) !== Number(user.id_user)) { %>
+              <form method="post" action="/accounts/<%= account.id_user %>/status">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="secondary-button" type="submit">
+                  <%= account.status === 'Y' ? 'Deactivate' : 'Activate' %>
+                </button>
+              </form>
+
+              <form method="post" action="/accounts/<%= account.id_user %>/delete" onsubmit="return confirm('Delete this account?')">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="danger-button" type="submit">Delete</button>
+              </form>
+            <% } %>
+          </div>
+        </article>
+      <% }) %>
+    </div>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

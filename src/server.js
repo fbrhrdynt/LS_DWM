@@ -12,11 +12,13 @@ import { notFound, errorHandler } from './middleware/errors.js';
 import authRoutes from './routes/auth.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import projectRoutes from './routes/project.routes.js';
+import accountRoutes from './routes/account.routes.js';
 import { pingDatabase } from './config/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
+const APP_VERSION = '0.3.0';
 
 const app = express();
 
@@ -31,6 +33,8 @@ if (Number(process.env.TRUST_PROXY || 0) > 0) {
 app.disable('x-powered-by');
 app.set('view engine', 'ejs');
 app.set('views', path.join(rootDir, 'views'));
+app.locals.appName = process.env.APP_NAME || 'DWM';
+app.locals.assetVersion = APP_VERSION;
 
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -61,7 +65,6 @@ app.use(loadUser);
 app.use(csrfToken);
 
 app.use((req, res, next) => {
-  res.locals.appName = process.env.APP_NAME || 'DWM';
   res.locals.currentPath = req.path;
   next();
 });
@@ -72,15 +75,28 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   try {
-    res.json({ ok: true, db: pingDatabase(), database: 'sqlite', app: 'DWM' });
+    res.json({
+      ok: true,
+      db: pingDatabase(),
+      database: 'sqlite',
+      app: 'DWM',
+      version: APP_VERSION
+    });
   } catch {
-    res.status(503).json({ ok: false, db: false, database: 'sqlite', app: 'DWM' });
+    res.status(503).json({
+      ok: false,
+      db: false,
+      database: 'sqlite',
+      app: 'DWM',
+      version: APP_VERSION
+    });
   }
 });
 
 app.use(authRoutes);
 app.use(dashboardRoutes);
 app.use(projectRoutes);
+app.use(accountRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
@@ -89,5 +105,5 @@ const host = process.env.HOST || '127.0.0.1';
 const port = Number(process.env.PORT || 3020);
 
 app.listen(port, host, () => {
-  console.log(`DWM listening on http://${host}:${port}`);
+  console.log(`DWM v${APP_VERSION} listening on http://${host}:${port}`);
 });

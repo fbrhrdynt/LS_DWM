@@ -1,0 +1,153 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page">
+  <div class="page-heading report-heading">
+    <div>
+      <p class="eyebrow"><%= project.contract || 'Project' %> · Daily Report <%= report.urut || report.id_wellinfo %></p>
+      <h1><%= report.wellname || project.wellname || 'Well report' %></h1>
+      <p class="muted"><%= report.curdate || '-' %> · <%= report.location || 'Location not set' %></p>
+    </div>
+    <div class="heading-actions">
+      <span class="badge <%= report.lockreport === 'YES' ? 'badge-muted' : 'badge-success' %>">
+        <%= report.lockreport === 'YES' ? 'Locked' : 'Open' %>
+      </span>
+      <a class="secondary-button" href="/projects/<%= project.id_project %>/reports">Reports</a>
+    </div>
+  </div>
+
+  <section class="detail-grid">
+    <article class="panel detail-card">
+      <div class="section-heading"><h2>Well information</h2></div>
+      <dl class="kv-grid">
+        <div><dt>Platform</dt><dd><%= report.platform || '-' %></dd></div>
+        <div><dt>Well</dt><dd><%= report.wellname || '-' %></dd></div>
+        <div><dt>Spud date</dt><dd><%= report.spud_date || '-' %></dd></div>
+        <div><dt>Location</dt><dd><%= report.location || '-' %></dd></div>
+        <div><dt>Company man</dt><dd><%= report.companyman || '-' %></dd></div>
+        <div><dt>OIM</dt><dd><%= report.oim || '-' %></dd></div>
+        <div><dt>Mud engineer</dt><dd><%= report.mudeng || '-' %></dd></div>
+        <div><dt>Report no.</dt><dd><%= report.urut || '-' %></dd></div>
+      </dl>
+    </article>
+
+    <article class="panel detail-card">
+      <div class="section-heading"><h2>Active mud properties</h2></div>
+      <dl class="kv-grid">
+        <div><dt>Mud check</dt><dd><%= details.mudcheck_type || '-' %></dd></div>
+        <div><dt>Fluid type</dt><dd><%= details.fluidtype || '-' %></dd></div>
+        <div><dt>Current depth</dt><dd><%= details.curdepth ?? '-' %></dd></div>
+        <div><dt>Bit size</dt><dd><%= details.bitsize ?? '-' %></dd></div>
+        <div><dt>Bit type</dt><dd><%= details.bittype || '-' %></dd></div>
+        <div><dt>Mud weight</dt><dd><%= details.mudweight ?? '-' %> <%= details.mwunit || '' %></dd></div>
+        <div><dt>PV</dt><dd><%= details.pv ?? '-' %></dd></div>
+        <div><dt>YP</dt><dd><%= details.yp ?? '-' %></dd></div>
+        <div><dt>Sand content</dt><dd><%= details.sandcontent ?? '-' %></dd></div>
+        <div><dt>Average ROP</dt><dd><%= details.avgrop ?? '-' %></dd></div>
+        <div><dt>Active system volume</dt><dd><%= details.activesysvol ?? '-' %></dd></div>
+        <div><dt>Rig activity</dt><dd><%= details.rigpresentact || '-' %></dd></div>
+      </dl>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div><h2>Shakers</h2><p class="muted">Current equipment data captured in this report.</p></div>
+    </div>
+    <div class="equipment-grid">
+      <% [1,2,3,4,5,6].forEach(n => { %>
+        <article class="equipment-card">
+          <span class="equipment-label">Shaker <%= n %></span>
+          <strong><%= details[`sh${n}_name`] || '-' %></strong>
+          <p><%= details[`sh${n}_model`] || 'Model not set' %></p>
+          <dl>
+            <div><dt>Screen</dt><dd><%= details[`sh${n}_screensize`] || '-' %></dd></div>
+            <div><dt>Running hour</dt><dd><%= details[`sh${n}_runninghour`] || '-' %></dd></div>
+          </dl>
+        </article>
+      <% }) %>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading"><h2>Centrifuges</h2></div>
+    <div class="equipment-grid three-up">
+      <% [1,2,3].forEach(n => { %>
+        <article class="equipment-card">
+          <span class="equipment-label">Centrifuge <%= n %></span>
+          <strong><%= details[`cf${n}_sn`] || '-' %></strong>
+          <p><%= details[`cf${n}_model`] || 'Model not set' %></p>
+          <dl>
+            <div><dt>Mode</dt><dd><%= details[`cf${n}_modeofopr`] || '-' %></dd></div>
+            <div><dt>Bowl speed</dt><dd><%= details[`cf${n}_bowlspeed`] ?? '-' %></dd></div>
+            <div><dt>Running hour</dt><dd><%= details[`cf${n}_runninghour`] ?? '-' %></dd></div>
+            <div><dt>Feed rate</dt><dd><%= details[`cf${n}_feedinrate`] ?? '-' %></dd></div>
+          </dl>
+        </article>
+      <% }) %>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading"><h2>Cutting dryers</h2></div>
+    <div class="equipment-grid three-up">
+      <% [1,2].forEach(n => { %>
+        <article class="equipment-card">
+          <span class="equipment-label">Cutting Dryer <%= n %></span>
+          <strong><%= details[`cdu${n}_sn`] || '-' %></strong>
+          <p><%= details[`cdu${n}_model`] || 'Model not set' %></p>
+          <dl>
+            <div><dt>Screen size</dt><dd><%= details[`cdu${n}_screensize`] ?? '-' %></dd></div>
+            <div><dt>Running hour</dt><dd><%= details[`cdu${n}_runninghour`] ?? '-' %></dd></div>
+            <div><dt>Centrate</dt><dd><%= details[`cdu${n}_centrateppg`] ?? '-' %></dd></div>
+            <div><dt>Sample depth</dt><dd><%= details[`cdu${n}_sampledepth`] ?? '-' %></dd></div>
+          </dl>
+        </article>
+      <% }) %>
+    </div>
+  </section>
+
+  <section class="detail-grid">
+    <article class="panel detail-card">
+      <div class="section-heading"><h2>Solids control</h2></div>
+      <dl class="kv-grid">
+        <div><dt>Desander run hour</dt><dd><%= desander.run_hour ?? '-' %></dd></div>
+        <div><dt>Desander feed rate</dt><dd><%= desander.feed_rate || '-' %></dd></div>
+        <div><dt>Desilter run hour</dt><dd><%= desilter.run_hour ?? '-' %></dd></div>
+        <div><dt>Desilter feed rate</dt><dd><%= desilter.feed_rate || '-' %></dd></div>
+        <div><dt>Bypassed %</dt><dd><%= bypassed.percentage ?? '-' %></dd></div>
+        <div><dt>Bypassed volume</dt><dd><%= bypassed.volume ?? '-' %></dd></div>
+        <div><dt>Daily waste</dt><dd><%= dailyWaste.dailywaste_generated ?? '-' %></dd></div>
+        <div><dt>Avg. MOC</dt><dd><%= dailyWaste.avg_moc ?? '-' %></dd></div>
+      </dl>
+    </article>
+
+    <article class="panel detail-card">
+      <div class="section-heading"><h2>Personnel</h2></div>
+      <dl class="kv-grid">
+        <div><dt>Day shift 1</dt><dd><%= personnel.ds1_name || '-' %></dd></div>
+        <div><dt>Day shift 2</dt><dd><%= personnel.ds2_name || '-' %></dd></div>
+        <div><dt>Night shift 1</dt><dd><%= personnel.ns1_name || '-' %></dd></div>
+        <div><dt>Night shift 2</dt><dd><%= personnel.ns2_name || '-' %></dd></div>
+        <div><dt>Cumulative oil</dt><dd><%= retort.cum_oil ?? '-' %></dd></div>
+        <div><dt>Cumulative mud</dt><dd><%= retort.cum_mud ?? '-' %></dd></div>
+      </dl>
+    </article>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading"><h2>Activities</h2></div>
+    <div class="activity-grid">
+      <div>
+        <span class="field-label">BSS activity</span>
+        <p class="activity-text"><%= additional.bssactivity || 'No activity recorded.' %></p>
+      </div>
+      <div>
+        <span class="field-label">Rig activity</span>
+        <p class="activity-text"><%= additional.rigactivity || 'No activity recorded.' %></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

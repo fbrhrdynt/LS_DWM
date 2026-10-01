@@ -12,6 +12,9 @@
     <nav class="desktop-nav" aria-label="Main navigation">
       <a class="<%= currentPath === '/dashboard' ? 'active' : '' %>" href="/dashboard">Dashboard</a>
       <a class="<%= currentPath.startsWith('/projects') ? 'active' : '' %>" href="/projects">Projects</a>
+      <% if (user.level === 'MASTER') { %>
+        <a class="<%= currentPath.startsWith('/accounts') ? 'active' : '' %>" href="/accounts">Accounts</a>
+      <% } %>
     </nav>
 
     <div class="account">
@@ -28,6 +31,7 @@
   <nav class="mobile-nav" id="mobileNav" hidden>
     <a href="/dashboard">Dashboard</a>
     <a href="/projects">Projects</a>
+    <% if (user.level === 'MASTER') { %><a href="/accounts">Accounts</a><% } %>
     <form action="/logout" method="post">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button type="submit">Sign out</button>

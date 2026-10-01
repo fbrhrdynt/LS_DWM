@@ -1,11 +1,12 @@
-const CACHE = 'dwm-static-v1';
+const CACHE = 'dwm-static-v3';
 const STATIC = [
-  '/static/css/app.css',
-  '/static/js/app.js'
+  '/static/css/app.css?v=0.3.0',
+  '/static/js/app.js?v=0.3.0'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(STATIC)));
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
@@ -14,6 +15,7 @@ self.addEventListener('activate', event => {
       keys.filter(key => key !== CACHE).map(key => caches.delete(key))
     ))
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {

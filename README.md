@@ -87,3 +87,27 @@ npm run db:backup
 ```
 
 Backups are written to `backups/` and excluded from Git.
+
+## DWM v0.3 management phase
+
+v0.3 adds server-enforced Account and Project management plus a lightweight Daily Report overview.
+
+Authorization rules:
+
+- `MASTER`: all projects, project management, account management.
+- `Supervisor`: all projects and project management.
+- `Operator`: assigned project only.
+- `Staff`: assigned project only.
+
+Project creation is transactional and creates the initial daily report plus the linked report records. State-changing actions use POST + CSRF protection rather than destructive GET routes.
+
+After replacing source on the VPS:
+
+```bash
+cd /opt/dwm
+npm install
+pm2 restart dwm --update-env
+curl https://dwm.logisourcedigital.web.id/health
+```
+
+The expected health response reports `version: "0.3.0"`.

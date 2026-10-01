@@ -1,0 +1,75 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page narrow-page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Accounts</p>
+      <h1>Edit account</h1>
+      <p class="muted"><%= account.employee_name %></p>
+    </div>
+    <a class="secondary-button" href="/accounts">Back</a>
+  </div>
+
+  <% if (error) { %><div class="alert error"><%= error %></div><% } %>
+
+  <section class="panel">
+    <form method="post" action="/accounts/<%= account.id_user %>/update" class="form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+      <label>
+        <span>Employee ID</span>
+        <input name="employee_id" maxlength="20" value="<%= account.employee_id || '' %>" required>
+      </label>
+
+      <label>
+        <span>Employee name</span>
+        <input name="employee_name" maxlength="255" value="<%= account.employee_name || '' %>" required>
+      </label>
+
+      <label>
+        <span>Email</span>
+        <input name="email" type="email" maxlength="100" value="<%= account.email || '' %>">
+      </label>
+
+      <label>
+        <span>Username</span>
+        <input name="kode_login" maxlength="255" value="<%= account.kode_login || '' %>" required>
+      </label>
+
+      <label>
+        <span>New password</span>
+        <input name="pass_login" type="password" minlength="8" autocomplete="new-password">
+        <small>Leave blank to keep the current password.</small>
+      </label>
+
+      <label>
+        <span>Level</span>
+        <select name="level" data-role-select required>
+          <% ['MASTER', 'Supervisor', 'Operator', 'Staff'].forEach(level => { %>
+            <option value="<%= level %>" <%= account.level === level ? 'selected' : '' %>><%= level %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <label class="project-field">
+        <span>Assigned project</span>
+        <select name="id_project">
+          <option value="">Select project</option>
+          <% projects.forEach(project => { %>
+            <option value="<%= project.id_project %>" <%= String(account.id_project || '') === String(project.id_project) ? 'selected' : '' %>>
+              <%= project.operator_name || project.contract || 'Project' %> · <%= project.drillingrig || '-' %>
+            </option>
+          <% }) %>
+        </select>
+      </label>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit">Save changes</button>
+        <a class="secondary-button" href="/accounts">Cancel</a>
+      </div>
+    </form>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

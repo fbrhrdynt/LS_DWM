@@ -6,24 +6,94 @@
     <div>
       <p class="eyebrow">DWM</p>
       <h1>Projects</h1>
+      <p class="muted">Project access is enforced on the server, not only in the navigation.</p>
     </div>
   </div>
 
-  <% if (!projects.length) { %>
-    <div class="empty-state">No projects are available for this account.</div>
-  <% } else { %>
-    <div class="card-list">
-      <% projects.forEach(project => { %>
-        <a class="project-card" href="/projects/<%= project.id_project %>/reports">
-          <div>
-            <strong><%= project.operator_name || 'Untitled project' %></strong>
-            <p><%= project.contract || '-' %> · <%= project.drillingrig || '-' %></p>
-          </div>
-          <span class="arrow">→</span>
-        </a>
-      <% }) %>
-    </div>
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+  <% if (error) { %><div class="alert error"><%= error %></div><% } %>
+
+  <% if (canManage) { %>
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <h2>Create project</h2>
+          <p class="muted">An initial daily report is created automatically.</p>
+        </div>
+      </div>
+
+      <form method="post" action="/projects" class="form-grid">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <label>
+          <span>Contract</span>
+          <input name="contract" maxlength="20" value="<%= values.contract || '' %>" required>
+        </label>
+
+        <label>
+          <span>Operator</span>
+          <input name="operator_name" maxlength="255" value="<%= values.operator_name || '' %>" required>
+        </label>
+
+        <label>
+          <span>Drilling rig</span>
+          <input name="drillingrig" maxlength="255" value="<%= values.drillingrig || '' %>" required>
+        </label>
+
+        <label>
+          <span>Well name</span>
+          <input name="wellname" maxlength="255" value="<%= values.wellname || '' %>" required>
+        </label>
+
+        <label>
+          <span>Report access code</span>
+          <input name="kodeakses" inputmode="numeric" pattern="[0-9]{4,10}" maxlength="10" value="<%= values.kodeakses || '' %>" required>
+        </label>
+
+        <div class="form-actions">
+          <button class="primary-button" type="submit">Create project</button>
+        </div>
+      </form>
+    </section>
   <% } %>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <h2>Project list</h2>
+        <p class="muted"><%= projects.length %> project(s) available to this account.</p>
+      </div>
+    </div>
+
+    <% if (!projects.length) { %>
+      <div class="empty-state">No projects are available for this account.</div>
+    <% } else { %>
+      <div class="responsive-list">
+        <% projects.forEach(project => { %>
+          <article class="management-row">
+            <a class="management-main project-link" href="/projects/<%= project.id_project %>/reports">
+              <strong><%= project.operator_name || 'Untitled project' %></strong>
+              <p><%= project.contract || '-' %> · <%= project.drillingrig || '-' %></p>
+              <div class="meta-row">
+                <span class="badge"><%= project.wellname || 'No well' %></span>
+                <span class="muted">Open reports →</span>
+              </div>
+            </a>
+
+            <% if (canManage) { %>
+              <div class="row-actions">
+                <a class="secondary-button" href="/projects/<%= project.id_project %>/edit">Edit</a>
+                <form method="post" action="/projects/<%= project.id_project %>/delete" onsubmit="return confirm('Delete this project and all of its reports?')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="danger-button" type="submit">Delete</button>
+                </form>
+              </div>
+            <% } %>
+          </article>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
 </main>
 
 <%- include('../partials/foot') %>
