@@ -2,7 +2,7 @@
 
 DWM is being rewritten from the legacy Laravel application to a lightweight Node.js + EJS + SQLite application.
 
-## Implemented through v0.4
+## Implemented through v0.4.1
 
 - DWM branding
 - Node.js 22 + Express + EJS
@@ -39,11 +39,12 @@ DWM is being rewritten from the legacy Laravel application to a lightweight Node
 - Versioned static assets + service-worker cache
 - PM2 and Nginx examples
 - SQLite database checker and backup command
+- Legacy automatic calculations restored for Well Data, Centrifuge, Desander/Desilter, Retort and Daily Waste
+- Calculated fields are read-only in the UI and recalculated server-side before save
+- Formula regression check (`npm run formula:check`)
 
 ## Still being rewritten before full feature parity
 
-- Verify/port legacy calculated Daily Waste formulas
-- Retort automatic calculations/derived values parity
 - Project logo upload/migration
 - PDF daily report generation
 - Excel well summary export

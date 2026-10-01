@@ -396,3 +396,75 @@ strong { font-weight: 700; }
   .editor-savebar { background: rgba(23,28,34,.96); box-shadow: 0 8px 28px rgba(0,0,0,.28); }
   .alert.warning { background: #352a15; color: #f6d28b; border-color: #6a5428; }
 }
+
+.formula-note {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.auto-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--accent-dark);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.calculated-input[readonly] {
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: default;
+}
+
+.formula-context-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.formula-context-grid > div {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.formula-context-grid span,
+.formula-context-grid strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.formula-context-grid span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.formula-context-grid strong {
+  margin-top: 3px;
+  font-size: 14px;
+}
+
+@media (max-width: 760px) {
+  .formula-context-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: visible;
+  }
+}

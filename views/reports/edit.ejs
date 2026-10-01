@@ -32,7 +32,23 @@
     <% }) %>
   </nav>
 
-  <form method="post" action="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/sections/<%= sectionId %>" class="report-edit-form">
+  <% if (['well','centrifuge1','centrifuge2','centrifuge3','desander','desilter','retort','waste'].includes(sectionId)) { %>
+    <div class="formula-note">
+      <strong>Auto calculation active.</strong> Fields marked <span class="auto-chip">Auto</span> are recalculated while you type and recalculated again on the server when saved.
+    </div>
+  <% } %>
+
+  <% if (sectionId === 'retort') { %>
+    <section class="formula-context-grid" aria-label="Retort calculation inputs">
+      <div><span>Base fluid</span><strong><%= calcContext.details.basefluid ?? 0 %>%</strong></div>
+      <div><span>SG base fluid</span><strong><%= calcContext.details.sgbasefluid ?? 0 %></strong></div>
+      <div><span>Mud weight</span><strong><%= calcContext.details.mudweight ?? 0 %> <%= calcContext.details.mwunit || '' %></strong></div>
+      <div><span>SG drill solids</span><strong><%= calcContext.details.sgdrillsolid ?? 0 %></strong></div>
+      <div><span>Hole volume</span><strong><%= calcContext.details.volholedrill ?? 0 %> <%= calcContext.details.volholeunit || '' %></strong></div>
+    </section>
+  <% } %>
+
+  <form method="post" action="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/sections/<%= sectionId %>" class="report-edit-form" data-report-editor data-report-section="<%= sectionId %>">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
     <% section.groups.forEach(group => { %>
@@ -48,9 +64,18 @@
           <% group.fields.forEach(field => {
             let current = data[field.name] ?? '';
             if (field.type === 'date' && current) current = String(current).slice(0, 10);
+            if (field.type === 'time' && current !== '') {
+              const rawTime = String(current);
+              if (/^\d+$/.test(rawTime)) {
+                const mins = Number(rawTime);
+                current = `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+              } else if (/^\d{2}:\d{2}/.test(rawTime)) {
+                current = rawTime.slice(0, 5);
+              }
+            }
           %>
             <label class="<%= field.type === 'textarea' ? 'full-field' : '' %>">
-              <span><%= field.label %></span>
+              <span><%= field.label %> <% if (field.calculated) { %><span class="auto-chip">Auto</span><% } %></span>
 
               <% if (field.type === 'textarea') { %>
                 <textarea
@@ -71,9 +96,11 @@
                   name="<%= field.name %>"
                   type="<%= field.type || 'text' %>"
                   value="<%= current %>"
+                  class="<%= field.calculated ? 'calculated-input' : '' %>"
                   <% if (field.type === 'number') { %>step="<%= field.step || 'any' %>" inputmode="decimal"<% } %>
                   <% if (field.min !== undefined) { %>min="<%= field.min %>"<% } %>
                   <%= field.required ? 'required' : '' %>
+                  <%= field.calculated ? 'readonly aria-readonly=true' : '' %>
                   <%= report.lockreport === 'YES' ? 'disabled' : '' %>
                 >
               <% } %>
@@ -96,4 +123,6 @@
   </form>
 </main>
 
+<script id="reportCalcContext" type="application/json"><%- JSON.stringify(calcContext || {}).replace(/</g, '\\u003c') %></script>
+<script src="/static/js/report-calculations.js?v=<%= assetVersion %>" defer></script>
 <%- include('../partials/foot') %>

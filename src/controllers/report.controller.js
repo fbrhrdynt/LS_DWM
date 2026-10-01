@@ -1,4 +1,11 @@
 import { all, get, run, transaction } from '../config/db.js';
+import {
+  calculateWellFields,
+  calculateCentrifuge,
+  calculateSolidsControl,
+  calculateRetort,
+  calculateDailyWaste
+} from '../services/report-calculations.js';
 
 const REPORT_TABLES = [
   'details',
@@ -64,16 +71,16 @@ const SECTION_DEFS = {
       description: 'Drilling and active-system values used throughout the report.',
       fields: [
         field('mudcheck_type', 'Mud check type'),
-        field('depth_each', 'Depth unit', 'select', { options: ['Metre', 'Feet'] }),
+        field('depth_each', 'Depth unit', 'select', { options: ['feet', 'metre'] }),
         field('depth1bef', 'Previous depth', 'number'),
         field('bitsize', 'Bit size', 'number'),
         field('bittype', 'Bit type'),
         field('washout', 'Washout', 'number'),
         field('mudweight', 'Mud weight', 'number'),
-        field('mwunit', 'Mud weight unit'),
+        field('mwunit', 'Mud weight unit', 'text', { calculated: true }),
         field('curdepth', 'Current depth', 'number'),
-        field('volholedrill', 'Hole volume drilled', 'number'),
-        field('volholeunit', 'Hole volume unit'),
+        field('volholedrill', 'Hole volume drilled', 'number', { calculated: true }),
+        field('volholeunit', 'Hole volume unit', 'select', { options: ['bbls', 'm3'] }),
         field('avgrop', 'Average ROP', 'number'),
         field('lgsactive', 'LGS active', 'number'),
         field('datenow', 'Mud check date', 'date'),
@@ -153,9 +160,9 @@ const SECTION_DEFS = {
       {
         title: 'Daily waste',
         fields: [
-          field('dailywaste_generated', 'Daily waste generated', 'number'),
-          field('avg_moc', 'Average MOC', 'number'),
-          field('avg_discharge', 'Average discharge', 'number')
+          field('dailywaste_generated', 'Daily waste generated', 'number', { calculated: true }),
+          field('avg_moc', 'Average MOC', 'number', { calculated: true }),
+          field('avg_discharge', 'Average discharge', 'number', { calculated: true })
         ]
       },
       {
@@ -209,10 +216,10 @@ function centrifugeSection(n) {
         field(`${p}_feedindensity`, 'Feed-in density', 'number'),
         field(`${p}_centratedens`, 'Centrate density', 'number'),
         field(`${p}_cakediscdens`, 'Cake discharge density', 'number'),
-        field(`${p}_centratereturn`, 'Centrate return'),
-        field(`${p}_cakediscflow`, 'Cake discharge flow'),
-        field(`${p}_masscake`, 'Mass cake'),
-        field(`${p}_volcake`, 'Volume cake')
+        field(`${p}_centratereturn`, 'Centrate return', 'number', { calculated: true }),
+        field(`${p}_cakediscflow`, 'Cake discharge flow', 'number', { calculated: true }),
+        field(`${p}_masscake`, 'Mass cake', 'number', { calculated: true }),
+        field(`${p}_volcake`, 'Volume cake', 'number', { calculated: true })
       ]
     }]
   };
@@ -246,13 +253,13 @@ function solidsSection(label, table) {
       title: label,
       fields: [
         field('run_hour', 'Run hour', 'number'),
-        field('feed_rate', 'Feed rate', 'number'),
+        field('feed_rate', 'Feed rate', 'number', { calculated: true }),
         field('feed_dens', 'Feed density', 'number'),
         field('overflow_dens', 'Overflow density', 'number'),
         field('underflow_dens', 'Underflow density', 'number'),
         field('vol_discharge', 'Volume discharge', 'number'),
         field('mudoncuttings', 'Mud on cuttings', 'number'),
-        field('volmud_discharge', 'Volume mud discharge', 'number'),
+        field('volmud_discharge', 'Volume mud discharge', 'number', { calculated: true }),
         field('head_pressure', 'Head pressure', 'number')
       ]
     }]
@@ -267,8 +274,12 @@ function retortGroups() {
     cf2: 'Centrifuge 2',
     cf3: 'Centrifuge 3'
   };
+  const calculated = new Set([
+    'basefluidvolincyl', 'massofcutting', 'massofdry', 'wtofwaterbf', 'massofbf',
+    'mudoncutting', 'percofcutting', 'volbfoildisc', 'volmuddisc', 'ooc'
+  ]);
   const definitions = [
-    ['sampletime', 'Sample time', 'text'],
+    ['sampletime', 'Sample time', 'time'],
     ['sampledepth', 'Sample depth', 'number'],
     ['emptycell', 'Empty cell', 'number'],
     ['emptycellwetsamp', 'Empty cell + wet sample', 'number'],
@@ -277,12 +288,12 @@ function retortGroups() {
     ['watervolin', 'Water volume in', 'number'],
     ['basefluidvolincyl', 'Base fluid volume', 'number'],
     ['wtcylwaterbf', 'Wt. cylinder + water/BF', 'number'],
-    ['massofcutting', 'Mass of cuttings', 'number'],
+    ['massofcutting', 'Mass of wet cuttings', 'number'],
     ['massofdry', 'Mass of dry cuttings', 'number'],
     ['wtofwaterbf', 'Weight water/BF', 'number'],
     ['massofbf', 'Mass of base fluid', 'number'],
     ['mudoncutting', 'Mud on cuttings', 'number'],
-    ['percofcutting', '% cuttings', 'number'],
+    ['percofcutting', '% cuttings discharged', 'number'],
     ['volbfoildisc', 'BF/oil discharged', 'number'],
     ['volmuddisc', 'Mud discharged', 'number'],
     ['ooc', 'OOC', 'number']
@@ -290,14 +301,19 @@ function retortGroups() {
 
   const groups = Object.entries(labels).map(([prefix, title]) => ({
     title,
-    fields: definitions.map(([name, label, type]) => field(`rt_${prefix}_${name}`, label, type))
+    fields: definitions.map(([name, label, type]) => field(
+      `rt_${prefix}_${name}`,
+      label,
+      type,
+      calculated.has(name) ? { calculated: true } : {}
+    ))
   }));
 
   groups.push({
     title: 'Recovery totals',
     fields: [
-      field('oil_recovered', 'Oil recovered', 'number'),
-      field('mud_recovered', 'Mud recovered', 'number'),
+      field('oil_recovered', 'Oil recovered', 'number', { calculated: true }),
+      field('mud_recovered', 'Mud recovered', 'number', { calculated: true }),
       field('cum_oil', 'Cumulative oil', 'number'),
       field('cum_mud', 'Cumulative mud', 'number')
     ]
@@ -307,16 +323,16 @@ function retortGroups() {
     title: 'Volume control / finalize',
     source: 'additional',
     fields: [
-      field('vctodryer_bbls', 'To dryer (bbls)', 'number'),
-      field('vctodryer_m3', 'To dryer (m³)', 'number'),
-      field('vcfrdryer_bbls', 'From dryer (bbls)', 'number'),
-      field('vcfrdryer_m3', 'From dryer (m³)', 'number'),
-      field('vcfrcf1_bbls', 'From CF1 (bbls)', 'number'),
-      field('vcfrcf1_m3', 'From CF1 (m³)', 'number'),
-      field('vcfrcf2_bbls', 'From CF2 (bbls)', 'number'),
-      field('vcfrcf2_m3', 'From CF2 (m³)', 'number'),
-      field('vcfrcf3_bbls', 'From CF3 (bbls)', 'number'),
-      field('vcfrcf3_m3', 'From CF3 (m³)', 'number')
+      field('vctodryer_bbls', 'To dryer (bbls)', 'number', { calculated: true }),
+      field('vctodryer_m3', 'To dryer (m³)', 'number', { calculated: true }),
+      field('vcfrdryer_bbls', 'From dryer (bbls)', 'number', { calculated: true }),
+      field('vcfrdryer_m3', 'From dryer (m³)', 'number', { calculated: true }),
+      field('vcfrcf1_bbls', 'From CF1 (bbls)', 'number', { calculated: true }),
+      field('vcfrcf1_m3', 'From CF1 (m³)', 'number', { calculated: true }),
+      field('vcfrcf2_bbls', 'From CF2 (bbls)', 'number', { calculated: true }),
+      field('vcfrcf2_m3', 'From CF2 (m³)', 'number', { calculated: true }),
+      field('vcfrcf3_bbls', 'From CF3 (bbls)', 'number', { calculated: true }),
+      field('vcfrcf3_m3', 'From CF3 (m³)', 'number', { calculated: true })
     ]
   });
 
@@ -374,6 +390,15 @@ function normalizeValue(raw, meta) {
       throw new InputError(`${meta.label} must use YYYY-MM-DD format.`);
     }
     return text;
+  }
+
+  if (meta.type === 'time') {
+    if (!/^\d{2}:\d{2}$/.test(text)) {
+      throw new InputError(`${meta.label} must use HH:MM format.`);
+    }
+    const [hours, minutes] = text.split(':').map(Number);
+    if (hours > 23 || minutes > 59) throw new InputError(`${meta.label} contains an invalid time.`);
+    return hours * 60 + minutes;
   }
 
   if (meta.type === 'select' && Array.isArray(meta.options) && !meta.options.includes(text)) {
@@ -442,6 +467,59 @@ function formDataFor(sectionId, section, wellId, report) {
   ) || {};
 }
 
+
+function calculationContext(wellId) {
+  return {
+    details: get('SELECT * FROM details WHERE id_wellinfo = ? LIMIT 1', [wellId]) || {},
+    desander: get('SELECT * FROM desanders WHERE id_wellinfo = ? LIMIT 1', [wellId]) || {},
+    desilter: get('SELECT * FROM desilters WHERE id_wellinfo = ? LIMIT 1', [wellId]) || {},
+    retort: get('SELECT * FROM retorts WHERE id_wellinfo = ? LIMIT 1', [wellId]) || {}
+  };
+}
+
+function applySectionCalculations(sectionId, wellId, body = {}) {
+  const next = { ...body };
+  const context = calculationContext(wellId);
+
+  if (sectionId === 'well') {
+    return { ...next, ...calculateWellFields({ ...context.details, ...next }) };
+  }
+
+  const cfMatch = sectionId.match(/^centrifuge([123])$/);
+  if (cfMatch) {
+    const prefix = `cf${cfMatch[1]}`;
+    const merged = { ...context.details, ...next };
+    return { ...next, ...calculateCentrifuge(prefix, merged, merged.volholeunit) };
+  }
+
+  if (sectionId === 'desander' || sectionId === 'desilter') {
+    const existing = sectionId === 'desander' ? context.desander : context.desilter;
+    return { ...next, ...calculateSolidsControl({ ...existing, ...next }) };
+  }
+
+  if (sectionId === 'retort') {
+    const additional = get('SELECT * FROM additional WHERE id_wellinfo = ? LIMIT 1', [wellId]) || {};
+    return calculateRetort({ ...context.retort, ...additional, ...next }, context.details);
+  }
+
+  if (sectionId === 'waste') {
+    return {
+      ...next,
+      ...calculateDailyWaste(context)
+    };
+  }
+
+  return next;
+}
+
+function calculatedFormData(sectionId, section, wellId, report) {
+  const base = formDataFor(sectionId, section, wellId, report);
+  if (['well', 'centrifuge1', 'centrifuge2', 'centrifuge3', 'desander', 'desilter', 'retort', 'waste'].includes(sectionId)) {
+    return { ...base, ...applySectionCalculations(sectionId, wellId, base) };
+  }
+  return base;
+}
+
 export function reportEditor(req, res, next) {
   try {
     const projectId = Number(req.params.projectId);
@@ -455,7 +533,7 @@ export function reportEditor(req, res, next) {
     const requestedSection = String(req.query.section || 'report');
     const sectionId = SECTION_DEFS[requestedSection] ? requestedSection : 'report';
     const section = SECTION_DEFS[sectionId];
-    const data = formDataFor(sectionId, section, wellId, context.report);
+    const data = calculatedFormData(sectionId, section, wellId, context.report);
 
     res.render('reports/edit', {
       title: `Edit report ${context.report.urut || context.report.id_wellinfo}`,
@@ -465,6 +543,7 @@ export function reportEditor(req, res, next) {
       section,
       sections: SECTION_ORDER,
       data,
+      calcContext: calculationContext(wellId),
       notice: String(req.query.notice || '').slice(0, 300),
       error: null
     });
@@ -489,6 +568,8 @@ export function saveReportSection(req, res, next) {
       throw new InputError('This report is locked. Unlock it before making changes.', 423);
     }
 
+    const calculatedBody = applySectionCalculations(sectionId, wellId, req.body);
+
     transaction(() => {
       if (section.table === 'wellinfo') {
         updateRow(
@@ -496,7 +577,7 @@ export function saveReportSection(req, res, next) {
           'id_wellinfo = ? AND id_project = ?',
           [wellId, projectId],
           flattenFields(section),
-          req.body
+          calculatedBody
         );
         return;
       }
@@ -509,14 +590,14 @@ export function saveReportSection(req, res, next) {
           'id_wellinfo = ?',
           [wellId],
           section.groups[0].fields,
-          req.body
+          calculatedBody
         );
         updateRow(
           'additional',
           'id_wellinfo = ?',
           [wellId],
           section.groups[1].fields,
-          req.body
+          calculatedBody
         );
         return;
       }
@@ -530,13 +611,13 @@ export function saveReportSection(req, res, next) {
         const additionalFields = section.groups
           .filter(group => group.source === 'additional')
           .flatMap(group => group.fields);
-        updateRow('retorts', 'id_wellinfo = ?', [wellId], retortFields, req.body);
-        updateRow('additional', 'id_wellinfo = ?', [wellId], additionalFields, req.body);
+        updateRow('retorts', 'id_wellinfo = ?', [wellId], retortFields, calculatedBody);
+        updateRow('additional', 'id_wellinfo = ?', [wellId], additionalFields, calculatedBody);
         return;
       }
 
       ensureWellRow(section.table, wellId);
-      updateRow(section.table, 'id_wellinfo = ?', [wellId], flattenFields(section), req.body);
+      updateRow(section.table, 'id_wellinfo = ?', [wellId], flattenFields(section), calculatedBody);
     });
 
     res.redirect(
@@ -559,7 +640,8 @@ export function saveReportSection(req, res, next) {
         sectionId,
         section,
         sections: SECTION_ORDER,
-        data: { ...formDataFor(sectionId, section, wellId, context.report), ...req.body },
+        data: { ...calculatedFormData(sectionId, section, wellId, context.report), ...req.body },
+        calcContext: calculationContext(wellId),
         notice: '',
         error: error.message
       });

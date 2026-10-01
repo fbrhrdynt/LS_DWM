@@ -133,3 +133,14 @@ curl https://dwm.logisourcedigital.web.id/health
 ```
 
 The expected health version is `0.4.0`.
+
+
+## Automatic report calculations
+
+DWM v0.4.1 restores the legacy Daily Report formulas. Calculated fields update live in the report editor and are recalculated server-side before saving. See `FORMULAS.md` for the formula reference.
+
+Validate formulas after deployment:
+
+```bash
+npm run formula:check
+```
