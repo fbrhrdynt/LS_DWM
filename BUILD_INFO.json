@@ -1,11 +1,12 @@
 {
   "name": "DWM",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "database": "SQLite via node:sqlite",
   "requires_node": ">=22.5",
   "mysql_required": false,
   "legacy_import": "scripts/import-legacy-sql.js",
   "database_path": "data/dwm.sqlite",
   "phase": "Assets, Inspection & Preventive Maintenance",
-  "auto_calculation": "client-and-server"
+  "auto_calculation": "client-and-server",
+  "release": "Theme + Horizontal Retort"
 }

@@ -46,3 +46,13 @@ DWM is being rewritten from the legacy Laravel application to a lightweight Node
 - Migration utility for legacy uploaded COC/certificate/PM document files
 
 The legacy application should remain available until the remaining items are implemented and the latest production data/files have been migrated and verified.
+
+
+## v0.5.1 completed
+
+- [x] Manual Light mode
+- [x] Manual Dark mode
+- [x] Persist theme preference
+- [x] Horizontal legacy-style Retort worksheet
+- [x] Mobile horizontal scroll for Retort
+- [x] Retort automatic formulas preserved

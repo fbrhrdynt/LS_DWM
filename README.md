@@ -174,3 +174,13 @@ pm2 restart dwm --update-env
 ```
 
 The expected health version is `0.5.0`.
+
+
+## v0.5.1 UI update
+
+- Manual Light and Dark mode.
+- Theme preference is stored in the browser and persists after refresh/login.
+- Retort editor restored to the original horizontal worksheet pattern:
+  Parameter × Shaker Overflow × Cutting Dryer × Centrifuge 1 × Centrifuge 2 × Centrifuge 3.
+- Retort automatic formulas remain active in the browser and are revalidated on the server.
+- Horizontal scrolling is intentionally retained on mobile instead of converting the Retort worksheet into stacked sections.

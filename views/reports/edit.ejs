@@ -51,64 +51,235 @@
   <form method="post" action="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/sections/<%= sectionId %>" class="report-edit-form" data-report-editor data-report-section="<%= sectionId %>">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
-    <% section.groups.forEach(group => { %>
-      <section class="panel edit-section">
-        <div class="section-heading">
-          <div>
-            <h2><%= group.title %></h2>
-            <% if (group.description) { %><p class="muted"><%= group.description %></p><% } %>
-          </div>
+    <% if (sectionId === 'retort') {
+      const retortPrefixes = [
+        ['sh', 'Shaker Overflow'],
+        ['cdu', 'Cutting Dryer'],
+        ['cf1', 'Centrifuge 1'],
+        ['cf2', 'Centrifuge 2'],
+        ['cf3', 'Centrifuge 3']
+      ];
+      const retortRows = [
+        ['sampledepth', 'Sample Depth', 'number', false],
+        ['sampletime', 'Sample Time', 'time', false],
+        ['emptycell', 'Empty Cell (gm)', 'number', false],
+        ['emptycellwetsamp', 'Empty Cell + Wet Sample (gm)', 'number', false],
+        ['celldrycut', 'Cell + Dry Cuttings Wt (gm)', 'number', false],
+        ['emptycylinder', 'Empty Cylinder (gm)', 'number', false],
+        ['wtcylwaterbf', 'Wt Cyl + Water + Base Fluid (gm)', 'number', false],
+        ['watervolin', 'Water Vol in Cylinder (ml)', 'number', false],
+        ['basefluidvolincyl', 'Base Fluids Vol in Cylinder (ml)', 'number', true],
+        ['massofcutting', 'Mass of Wet Cuttings (gm)', 'number', true],
+        ['massofdry', 'Mass of Dry Cuttings (gm)', 'number', true],
+        ['wtofwaterbf', 'Wt of Water & Base Fluids (gm)', 'number', true],
+        ['massofbf', 'Mass of Base Fluids (gm)', 'number', true],
+        ['mudoncutting', 'Mud-on-Cuttings (vol/vol)', 'number', true],
+        ['percofcutting', '% of Cuttings Discharged', 'number', true],
+        ['volmuddisc', `Vol Mud Discharge (${calcContext.details.volholeunit || 'bbls'})`, 'number', true],
+        ['volbfoildisc', `Vol Base Fluid / Oil Discharge (${calcContext.details.volholeunit || 'bbls'})`, 'number', true],
+        ['ooc', 'OOC (Oil On Cuttings) %', 'number', true]
+      ];
+      const formatRetortTime = (raw) => {
+        if (raw === null || raw === undefined || raw === '') return '';
+        const text = String(raw);
+        if (/^\d+$/.test(text)) {
+          const mins = Number(text);
+          return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+        }
+        return /^\d{2}:\d{2}/.test(text) ? text.slice(0, 5) : text;
+      };
+      const retortValue = (prefix, key, type) => {
+        const name = `rt_${prefix}_${key}`;
+        let value = data[name] ?? '';
+        if (key === 'percofcutting' && String(value).trim() === '') {
+          value = ({ sh: 90, cdu: 80, cf1: 100, cf2: 100, cf3: 100 })[prefix];
+        }
+        return type === 'time' ? formatRetortTime(value) : value;
+      };
+    %>
+      <section class="panel retort-workbook-panel">
+        <div class="retort-workbook-head">
+          <h2>Retort Worksheet</h2>
+          <p class="muted">Same horizontal worksheet layout as the legacy system. Swipe sideways on mobile.</p>
         </div>
 
-        <div class="form-grid report-form-grid">
-          <% group.fields.forEach(field => {
-            let current = data[field.name] ?? '';
-            if (field.type === 'date' && current) current = String(current).slice(0, 10);
-            if (field.type === 'time' && current !== '') {
-              const rawTime = String(current);
-              if (/^\d+$/.test(rawTime)) {
-                const mins = Number(rawTime);
-                current = `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
-              } else if (/^\d{2}:\d{2}/.test(rawTime)) {
-                current = rawTime.slice(0, 5);
-              }
-            }
-          %>
-            <label class="<%= field.type === 'textarea' ? 'full-field' : '' %>">
-              <span><%= field.label %> <% if (field.calculated) { %><span class="auto-chip">Auto</span><% } %></span>
+        <div class="retort-scroll-wrapper">
+          <table class="retort-table">
+            <thead>
+              <tr>
+                <th class="retort-parameter">Parameter</th>
+                <% retortPrefixes.forEach(([, title]) => { %><th><%= title %></th><% }) %>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="retort-section-row">
+                <th colspan="6">Mud properties used by the calculation</th>
+              </tr>
 
-              <% if (field.type === 'textarea') { %>
-                <textarea
-                  name="<%= field.name %>"
-                  maxlength="<%= field.max || 2000 %>"
-                  rows="4"
-                  <%= report.lockreport === 'YES' ? 'disabled' : '' %>
-                ><%= current %></textarea>
-              <% } else if (field.type === 'select') { %>
-                <select name="<%= field.name %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
-                  <option value="">—</option>
-                  <% (field.options || []).forEach(option => { %>
-                    <option value="<%= option %>" <%= String(current) === String(option) ? 'selected' : '' %>><%= option %></option>
+              <% [
+                ['Base Fluids from Whole Mud (%)', calcContext.details.basefluid ?? 0],
+                ['SG Base Fluids (sp.gr)', calcContext.details.sgbasefluid ?? 0],
+                ['SG Drill Solids / Cutting (sp.gr)', calcContext.details.sgdrillsolid ?? 0]
+              ].forEach(([label, value]) => { %>
+                <tr>
+                  <td class="retort-parameter"><%= label %></td>
+                  <% retortPrefixes.forEach(() => { %>
+                    <td><input type="text" value="<%= value %>" readonly aria-readonly="true"></td>
                   <% }) %>
-                </select>
-              <% } else { %>
-                <input
-                  name="<%= field.name %>"
-                  type="<%= field.type || 'text' %>"
-                  value="<%= current %>"
-                  class="<%= field.calculated ? 'calculated-input' : '' %>"
-                  <% if (field.type === 'number') { %>step="<%= field.step || 'any' %>" inputmode="decimal"<% } %>
-                  <% if (field.min !== undefined) { %>min="<%= field.min %>"<% } %>
-                  <%= field.required ? 'required' : '' %>
-                  <%= field.calculated ? 'readonly aria-readonly=true' : '' %>
-                  <%= report.lockreport === 'YES' ? 'disabled' : '' %>
-                >
-              <% } %>
+                </tr>
+              <% }) %>
+
+              <tr class="retort-section-row">
+                <th colspan="6">Retort readings and calculated results</th>
+              </tr>
+
+              <% retortRows.forEach(([key, label, type, calculated]) => { %>
+                <tr>
+                  <td class="retort-parameter">
+                    <%= label %>
+                    <% if (calculated) { %><span class="retort-auto-label">Auto</span><% } %>
+                  </td>
+
+                  <% retortPrefixes.forEach(([prefix]) => {
+                    const inputName = `rt_${prefix}_${key}`;
+                    const current = retortValue(prefix, key, type);
+                  %>
+                    <td>
+                      <input
+                        name="<%= inputName %>"
+                        type="<%= type %>"
+                        value="<%= current %>"
+                        <% if (type === 'number') { %>step="any" inputmode="decimal"<% } %>
+                        <%= calculated ? 'readonly aria-readonly=true' : '' %>
+                        <%= report.lockreport === 'YES' ? 'disabled' : '' %>
+                      >
+                    </td>
+                  <% }) %>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="retort-recovery-grid">
+          <% [
+            ['oil_recovered', `Oil Recovered (${calcContext.details.volholeunit || 'bbls'})`, true],
+            ['mud_recovered', `Mud Recovered (${calcContext.details.volholeunit || 'bbls'})`, true],
+            ['cum_oil', `Cumulative Oil (${calcContext.details.volholeunit || 'bbls'})`, false],
+            ['cum_mud', `Cumulative Mud (${calcContext.details.volholeunit || 'bbls'})`, false]
+          ].forEach(([name, label, calculated]) => { %>
+            <label>
+              <span><%= label %> <% if (calculated) { %><span class="retort-auto-label">Auto</span><% } %></span>
+              <input
+                name="<%= name %>"
+                type="number"
+                step="any"
+                inputmode="decimal"
+                value="<%= data[name] ?? 0 %>"
+                <%= calculated ? 'readonly aria-readonly=true' : '' %>
+                <%= report.lockreport === 'YES' ? 'disabled' : '' %>
+              >
             </label>
           <% }) %>
         </div>
       </section>
-    <% }) %>
+
+      <section class="panel retort-workbook-panel">
+        <div class="retort-workbook-head">
+          <h2>Volume Control / Finalize</h2>
+          <p class="muted">Calculated automatically from the same Retort worksheet.</p>
+        </div>
+        <div class="retort-scroll-wrapper">
+          <table class="retort-table retort-finalize-table">
+            <thead>
+              <tr>
+                <th class="retort-parameter">Source</th>
+                <th>Barrels</th>
+                <th>m³</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% [
+                ['To Cutting Dryer', 'vctodryer_bbls', 'vctodryer_m3'],
+                ['From Cutting Dryer', 'vcfrdryer_bbls', 'vcfrdryer_m3'],
+                ['From Centrifuge 1', 'vcfrcf1_bbls', 'vcfrcf1_m3'],
+                ['From Centrifuge 2', 'vcfrcf2_bbls', 'vcfrcf2_m3'],
+                ['From Centrifuge 3', 'vcfrcf3_bbls', 'vcfrcf3_m3']
+              ].forEach(([label, bblName, m3Name]) => { %>
+                <tr>
+                  <td class="retort-parameter"><%= label %> <span class="retort-auto-label">Auto</span></td>
+                  <td>
+                    <input name="<%= bblName %>" type="number" step="any" value="<%= data[bblName] ?? 0 %>" readonly aria-readonly="true" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                  </td>
+                  <td>
+                    <input name="<%= m3Name %>" type="number" step="any" value="<%= data[m3Name] ?? 0 %>" readonly aria-readonly="true" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <% } else { %>
+      <% section.groups.forEach(group => { %>
+        <section class="panel edit-section">
+          <div class="section-heading">
+            <div>
+              <h2><%= group.title %></h2>
+              <% if (group.description) { %><p class="muted"><%= group.description %></p><% } %>
+            </div>
+          </div>
+
+          <div class="form-grid report-form-grid">
+            <% group.fields.forEach(field => {
+              let current = data[field.name] ?? '';
+              if (field.type === 'date' && current) current = String(current).slice(0, 10);
+              if (field.type === 'time' && current !== '') {
+                const rawTime = String(current);
+                if (/^\d+$/.test(rawTime)) {
+                  const mins = Number(rawTime);
+                  current = `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+                } else if (/^\d{2}:\d{2}/.test(rawTime)) {
+                  current = rawTime.slice(0, 5);
+                }
+              }
+            %>
+              <label class="<%= field.type === 'textarea' ? 'full-field' : '' %>">
+                <span><%= field.label %> <% if (field.calculated) { %><span class="auto-chip">Auto</span><% } %></span>
+
+                <% if (field.type === 'textarea') { %>
+                  <textarea
+                    name="<%= field.name %>"
+                    maxlength="<%= field.max || 2000 %>"
+                    rows="4"
+                    <%= report.lockreport === 'YES' ? 'disabled' : '' %>
+                  ><%= current %></textarea>
+                <% } else if (field.type === 'select') { %>
+                  <select name="<%= field.name %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                    <option value="">—</option>
+                    <% (field.options || []).forEach(option => { %>
+                      <option value="<%= option %>" <%= String(current) === String(option) ? 'selected' : '' %>><%= option %></option>
+                    <% }) %>
+                  </select>
+                <% } else { %>
+                  <input
+                    name="<%= field.name %>"
+                    type="<%= field.type || 'text' %>"
+                    value="<%= current %>"
+                    class="<%= field.calculated ? 'calculated-input' : '' %>"
+                    <% if (field.type === 'number') { %>step="<%= field.step || 'any' %>" inputmode="decimal"<% } %>
+                    <% if (field.min !== undefined) { %>min="<%= field.min %>"<% } %>
+                    <%= field.required ? 'required' : '' %>
+                    <%= field.calculated ? 'readonly aria-readonly=true' : '' %>
+                    <%= report.lockreport === 'YES' ? 'disabled' : '' %>
+                  >
+                <% } %>
+              </label>
+            <% }) %>
+          </div>
+        </section>
+      <% }) %>
+    <% } %>
 
     <div class="editor-savebar">
       <div>
