@@ -104,3 +104,25 @@ The legacy application should remain available until the remaining items are imp
 - [x] Full SQLite + uploads backup
 - [x] CSP and security-header hardening
 - [x] Login/reset rate limits
+
+
+## v0.8 completed
+
+- [x] Notification center / due alerts
+- [x] Dashboard due/overdue attention list
+- [x] Database integrity / orphan checker
+- [x] Safe integrity repair
+- [x] Cascade delete hardening for imported SQLite schema
+- [x] Full backup ZIP + manifest
+- [x] Backup verification
+- [x] Guarded backup restore
+- [x] Legacy Laravel file migration
+- [x] Optional ownCloud/WebDAV backup
+- [x] System diagnostics UI
+- [x] Unified release check
+
+External SMTP/WebDAV credentials remain environment configuration only.
+
+## 0.8 release status
+
+Application-side Laravel parity is considered complete for the active modules found in the legacy routes/controllers. The legacy filesystem config included an ownCloud/WebDAV disk but no active controller route using it; DWM 0.8 keeps it as an optional verified backup target. External SMTP/WebDAV availability still depends on credentials and the external services themselves.

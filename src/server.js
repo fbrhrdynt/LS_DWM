@@ -19,13 +19,17 @@ import exportRoutes from './routes/export.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
 import auditRoutes from './routes/audit.routes.js';
 import { auditMutations } from './middleware/audit.js';
+import { loadNotificationSummary } from './middleware/notifications.js';
+import notificationRoutes from './routes/notification.routes.js';
+import systemRoutes from './routes/system.routes.js';
+import legacyCompatRoutes from './routes/legacy-compat.routes.js';
 import { formatReportNumber } from './services/report-sequence.js';
 import { pingDatabase } from './config/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const APP_VERSION = '0.7.0';
+const APP_VERSION = '0.8.0';
 
 const app = express();
 
@@ -94,6 +98,7 @@ app.use(cookieSession({
 }));
 
 app.use(loadUser);
+app.use(loadNotificationSummary);
 app.use(csrfToken);
 app.use(auditMutations);
 
@@ -108,12 +113,14 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   try {
-    res.json({
-      ok: true,
-      db: pingDatabase(),
+    const dbOk = pingDatabase();
+    res.status(dbOk ? 200 : 503).json({
+      ok: dbOk,
+      db: dbOk,
       database: 'sqlite',
       app: 'DWM',
-      version: APP_VERSION
+      version: APP_VERSION,
+      uptime_seconds: Math.floor(process.uptime())
     });
   } catch {
     res.status(503).json({
@@ -121,7 +128,8 @@ app.get('/health', (req, res) => {
       db: false,
       database: 'sqlite',
       app: 'DWM',
-      version: APP_VERSION
+      version: APP_VERSION,
+      uptime_seconds: Math.floor(process.uptime())
     });
   }
 });
@@ -135,6 +143,9 @@ app.use(assetMaintenanceRoutes);
 app.use(exportRoutes);
 app.use(settingsRoutes);
 app.use(auditRoutes);
+app.use(notificationRoutes);
+app.use(systemRoutes);
+app.use(legacyCompatRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

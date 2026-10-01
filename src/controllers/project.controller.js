@@ -7,6 +7,7 @@ import {
   removeUploadedRequestFile,
   resolveStoredUpload
 } from '../services/file-storage.js';
+import { deleteProjectTree } from '../services/relational-cleanup.service.js';
 import { formatReportNumber } from '../services/report-sequence.js';
 
 const PROJECT_MANAGERS = new Set(['MASTER', 'Supervisor']);
@@ -257,7 +258,7 @@ export function deleteProject(req, res, next) {
   try {
     const projectId = Number(req.params.projectId);
     const project = get(
-      'SELECT id_project, operator_name FROM projects WHERE id_project = ? LIMIT 1',
+      'SELECT id_project, operator_name, logo FROM projects WHERE id_project = ? LIMIT 1',
       [projectId]
     );
 
@@ -276,8 +277,9 @@ export function deleteProject(req, res, next) {
       ));
     }
 
-    run('DELETE FROM projects WHERE id_project = ?', [projectId]);
-    res.redirect('/projects?notice=' + encodeURIComponent('Project deleted successfully.'));
+    deleteProjectTree(projectId);
+    if (project.logo) deleteStoredUpload(project.logo);
+    res.redirect('/projects?notice=' + encodeURIComponent('Project and all related reports deleted successfully.'));
   } catch (error) {
     next(error);
   }

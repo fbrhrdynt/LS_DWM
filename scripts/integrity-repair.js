@@ -1,0 +1,11 @@
+import 'dotenv/config';
+import { db } from '../src/config/db.js';
+import { repairSafeIntegrityIssues, integrityReport } from '../src/services/integrity.service.js';
+const apply = process.argv.includes('--apply');
+const result = repairSafeIntegrityIssues({ apply });
+console.log(`${apply ? 'Applied' : 'Dry run'}: ${result.actions.length} safe repair action(s)`);
+for (const item of result.actions.slice(0,100)) console.log(JSON.stringify(item));
+if (!apply) console.log('Run again with --apply to create missing report child rows and normalize decimal report numbers.');
+const after = integrityReport();
+console.log(`Remaining domain errors: ${after.summary.errors}; warnings: ${after.summary.warnings}`);
+db.close();

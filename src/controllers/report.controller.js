@@ -6,6 +6,7 @@ import {
   calculateRetort,
   calculateDailyWaste
 } from '../services/report-calculations.js';
+import { deleteReportTree } from '../services/relational-cleanup.service.js';
 import { nextReportDate, nextReportNumber, formatReportNumber } from '../services/report-sequence.js';
 
 const REPORT_TABLES = [
@@ -841,10 +842,7 @@ export function deleteReport(req, res, next) {
       ));
     }
 
-    run(
-      'DELETE FROM wellinfo WHERE id_wellinfo = ? AND id_project = ?',
-      [wellId, projectId]
-    );
+    deleteReportTree(wellId, projectId);
 
     res.redirect(`/projects/${projectId}/reports?notice=` + encodeURIComponent('Report deleted.'));
   } catch (error) {

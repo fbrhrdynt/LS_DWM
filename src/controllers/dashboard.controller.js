@@ -1,5 +1,6 @@
 import { get } from '../config/db.js';
 import { todayInTimeZone } from '../services/maintenance-calculations.js';
+import { listNotifications, notificationSummary } from '../services/notification.service.js';
 
 export function dashboard(req, res, next) {
   try {
@@ -36,9 +37,14 @@ export function dashboard(req, res, next) {
       ? get(`SELECT COUNT(*) AS total FROM xusers WHERE status = 'Y'`)?.total ?? 0
       : get(`SELECT COUNT(*) AS total FROM xusers WHERE status = 'Y' AND id_project = ?`, [projectId])?.total ?? 0;
 
+    const notifications = listNotifications({ warningDays: 30, limit: 8 });
+    const notificationStats = notificationSummary();
+
     res.render('dashboard/index', {
       title: 'Dashboard',
-      stats: { projects, reports, assets, users, inspectionDue, pmDue }
+      stats: { projects, reports, assets, users, inspectionDue, pmDue },
+      notifications,
+      notificationStats
     });
   } catch (error) {
     next(error);

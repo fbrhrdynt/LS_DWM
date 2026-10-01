@@ -1,0 +1,12 @@
+import 'dotenv/config';
+import { db } from '../src/config/db.js';
+import { integrityReport } from '../src/services/integrity.service.js';
+const soft = process.argv.includes('--soft');
+const report = integrityReport();
+console.log(`SQLite integrity: ${report.sqlite.sqliteOk ? 'OK' : 'FAILED'}`);
+console.log(`Foreign key issues: ${report.sqlite.foreignKeyRows.length}`);
+console.log(`Domain errors: ${report.summary.errors}`);
+console.log(`Domain warnings: ${report.summary.warnings}`);
+for (const item of report.issues) console.log(`${item.severity.toUpperCase()} ${item.code}: ${item.count} - ${item.message}`);
+db.close();
+process.exit((report.ok || soft) ? 0 : 1);

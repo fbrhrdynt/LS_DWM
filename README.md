@@ -243,3 +243,8 @@ Production hardening adds password recovery, self-service password changes,
 session revocation, audit trail, SMTP status, stronger security headers, and
 full database/upload backup. Existing report calculations, PDF layout,
 Excel export, Light/Dark themes, Assets, Inspection and PM are unchanged.
+
+
+## v0.8 Release Candidate
+
+DWM now includes final migration and production-readiness tooling: notifications, integrity diagnostics/repair, verified backup/restore, legacy file migration, optional ownCloud/WebDAV backup, system diagnostics and unified release checks. PDF v0.6.2 layout and v0.7 security behavior remain unchanged.

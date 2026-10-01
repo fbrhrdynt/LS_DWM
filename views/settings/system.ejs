@@ -1,0 +1,45 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+<main class="page">
+  <div class="page-heading">
+    <div><p class="eyebrow">Settings</p><h1>System</h1><p class="muted">Production diagnostics, integrity and backup readiness.</p></div>
+    <div class="heading-actions"><a class="secondary-button" href="/settings/report">Report</a><a class="secondary-button" href="/settings/security">Security</a><a class="secondary-button" href="/settings/audit">Audit</a></div>
+  </div>
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+
+  <section class="system-grid">
+    <article class="panel system-card"><span>SQLite</span><strong><%= diagnostics.integrity.sqlite.sqliteOk ? 'Healthy' : 'Problem' %></strong><small><%= diagnostics.database.display %></small></article>
+    <article class="panel system-card"><span>Integrity errors</span><strong><%= diagnostics.integrity.summary.errors %></strong><small><%= diagnostics.integrity.summary.warnings %> warning(s)</small></article>
+    <article class="panel system-card"><span>Uploads</span><strong><%= diagnostics.uploads.display %></strong><small>Local protected storage</small></article>
+    <article class="panel system-card"><span>Disk free</span><strong><%= diagnostics.disk ? diagnostics.disk.free : '-' %></strong><small><%= diagnostics.disk ? diagnostics.disk.total : '-' %> total</small></article>
+    <article class="panel system-card"><span>SMTP</span><strong><%= diagnostics.mail.configured ? 'Configured' : 'Not configured' %></strong><small><%= diagnostics.mail.host %></small></article>
+    <article class="panel system-card"><span>WebDAV</span><strong><%= diagnostics.webdav.configured ? 'Configured' : 'Not configured' %></strong><small><%= diagnostics.webdav.backupPath %></small></article>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading"><div><h2>Integrity report</h2><p class="muted">Safe repair only creates missing report child rows and normalizes decimal report numbers. It never deletes orphan business data.</p></div></div>
+    <% if (!diagnostics.integrity.issues.length) { %><div class="alert info">No domain integrity issues found.</div><% } %>
+    <div class="integrity-list">
+      <% diagnostics.integrity.issues.forEach(item => { %>
+        <div class="integrity-row severity-<%= item.severity === 'error' ? 'critical' : 'warning' %>"><strong><%= item.code %></strong><span><%= item.count %> · <%= item.message %></span></div>
+      <% }) %>
+    </div>
+    <form method="post" action="/settings/system/repair" onsubmit="return confirm('Apply safe integrity repairs now?')"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="secondary-button" type="submit">Apply safe repair</button></form>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading"><div><h2>Operations</h2><p class="muted">Recommended production commands.</p></div></div>
+    <pre class="config-sample">npm run backup:full
+npm run backup:verify -- backups/dwm-full-YYYY...
+npm run integrity:check
+npm run integrity:repair
+npm run integrity:repair -- --apply
+npm run release:check</pre>
+    <% if (diagnostics.webdav.configured) { %><form method="post" action="/settings/system/webdav-test"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="secondary-button" type="submit">Test WebDAV</button></form><% } %>
+  </section>
+
+  <section class="panel"><div class="section-heading"><div><h2>Recent backups</h2></div></div>
+    <% if (!diagnostics.backups.length) { %><p class="muted">No full backup found yet.</p><% } else { %><div class="simple-stack"><% diagnostics.backups.forEach(name=>{ %><code><%= name %></code><% }) %></div><% } %>
+  </section>
+</main>
+<%- include('../partials/foot') %>

@@ -36,6 +36,26 @@
       <strong><%= stats.pmDue %></strong>
     </a>
   </section>
+
+  <% if (notifications && notifications.length) { %>
+    <section class="panel dashboard-alerts">
+      <div class="section-heading">
+        <div>
+          <h2>Needs attention</h2>
+          <p class="muted"><%= notificationStats.overdue %> overdue/expired · <%= notificationStats.due7 %> due within 7 days</p>
+        </div>
+        <a class="secondary-button" href="/notifications">View all</a>
+      </div>
+      <div class="notification-compact-list">
+        <% notifications.forEach(item => { %>
+          <a href="<%= item.href %>" class="notification-compact severity-<%= item.severity %>">
+            <div><strong><%= item.title %></strong><span><%= item.message %></span></div>
+            <small><%= item.dueDate %></small>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
 </main>
 
 <%- include('../partials/foot') %>

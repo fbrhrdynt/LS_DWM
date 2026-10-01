@@ -1,0 +1,9 @@
+[Unit]
+Description=DWM verified full backup
+After=network.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/opt/dwm
+ExecStart=/bin/bash -lc 'npm run backup:full && npm run backup:prune'
