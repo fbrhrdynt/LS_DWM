@@ -1,0 +1,99 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page report-editor-page">
+  <div class="page-heading report-heading">
+    <div>
+      <p class="eyebrow"><%= project.contract || 'Project' %> · Report <%= report.urut || report.id_wellinfo %></p>
+      <h1>Edit daily report</h1>
+      <p class="muted"><%= report.wellname || project.wellname || 'Well report' %> · <%= report.curdate || '-' %></p>
+    </div>
+    <div class="heading-actions">
+      <span class="badge <%= report.lockreport === 'YES' ? 'badge-muted' : 'badge-success' %>">
+        <%= report.lockreport === 'YES' ? 'Locked' : 'Open' %>
+      </span>
+      <a class="secondary-button" href="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>">Overview</a>
+    </div>
+  </div>
+
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+  <% if (error) { %><div class="alert error"><%= error %></div><% } %>
+
+  <% if (report.lockreport === 'YES') { %>
+    <div class="alert warning">This report is locked. You can review the data, but changes cannot be saved until the report is unlocked.</div>
+  <% } %>
+
+  <nav class="section-tabs" aria-label="Report sections">
+    <% sections.forEach(item => { %>
+      <a
+        href="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/edit?section=<%= item.id %>"
+        class="section-tab <%= sectionId === item.id ? 'active' : '' %>"
+      ><%= item.label %></a>
+    <% }) %>
+  </nav>
+
+  <form method="post" action="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/sections/<%= sectionId %>" class="report-edit-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <% section.groups.forEach(group => { %>
+      <section class="panel edit-section">
+        <div class="section-heading">
+          <div>
+            <h2><%= group.title %></h2>
+            <% if (group.description) { %><p class="muted"><%= group.description %></p><% } %>
+          </div>
+        </div>
+
+        <div class="form-grid report-form-grid">
+          <% group.fields.forEach(field => {
+            let current = data[field.name] ?? '';
+            if (field.type === 'date' && current) current = String(current).slice(0, 10);
+          %>
+            <label class="<%= field.type === 'textarea' ? 'full-field' : '' %>">
+              <span><%= field.label %></span>
+
+              <% if (field.type === 'textarea') { %>
+                <textarea
+                  name="<%= field.name %>"
+                  maxlength="<%= field.max || 2000 %>"
+                  rows="4"
+                  <%= report.lockreport === 'YES' ? 'disabled' : '' %>
+                ><%= current %></textarea>
+              <% } else if (field.type === 'select') { %>
+                <select name="<%= field.name %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                  <option value="">—</option>
+                  <% (field.options || []).forEach(option => { %>
+                    <option value="<%= option %>" <%= String(current) === String(option) ? 'selected' : '' %>><%= option %></option>
+                  <% }) %>
+                </select>
+              <% } else { %>
+                <input
+                  name="<%= field.name %>"
+                  type="<%= field.type || 'text' %>"
+                  value="<%= current %>"
+                  <% if (field.type === 'number') { %>step="<%= field.step || 'any' %>" inputmode="decimal"<% } %>
+                  <% if (field.min !== undefined) { %>min="<%= field.min %>"<% } %>
+                  <%= field.required ? 'required' : '' %>
+                  <%= report.lockreport === 'YES' ? 'disabled' : '' %>
+                >
+              <% } %>
+            </label>
+          <% }) %>
+        </div>
+      </section>
+    <% }) %>
+
+    <div class="editor-savebar">
+      <div>
+        <strong><%= section.label %></strong>
+        <span class="muted">Changes are saved only for this section.</span>
+      </div>
+      <div class="savebar-actions">
+        <a class="secondary-button" href="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>">Cancel</a>
+        <button class="primary-button" type="submit" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>Save section</button>
+      </div>
+    </div>
+  </form>
+</main>
+
+<%- include('../partials/foot') %>

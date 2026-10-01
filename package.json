@@ -1,6 +1,6 @@
 {
   "name": "dwm",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "DWM - lightweight Node.js rewrite of the legacy Laravel application",
@@ -12,7 +12,8 @@
     "dev": "node --watch src/server.js",
     "db:check": "node scripts/db-check.js",
     "db:import": "node scripts/import-legacy-sql.js",
-    "db:backup": "node scripts/backup-db.js"
+    "db:backup": "node scripts/backup-db.js",
+    "check": "node --check src/server.js && node --check src/controllers/project.controller.js && node --check src/controllers/report.controller.js && node --check src/controllers/account.controller.js && node --check src/routes/report.routes.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

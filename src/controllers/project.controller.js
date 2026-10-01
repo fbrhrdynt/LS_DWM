@@ -2,6 +2,18 @@ import { all, get, run, transaction } from '../config/db.js';
 
 const PROJECT_MANAGERS = new Set(['MASTER', 'Supervisor']);
 
+function todayLocal() {
+  const timeZone = process.env.APP_TIMEZONE || 'Asia/Jakarta';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 function clean(value, max = 255) {
   return String(value ?? '').trim().slice(0, max);
 }
@@ -64,7 +76,7 @@ function renderProjectIndex(req, res, { error = null, values = {} } = {}) {
 }
 
 function createInitialReport(projectId, input) {
-  const date = new Date().toISOString().slice(0, 10);
+  const date = todayLocal();
 
   const result = run(
     `INSERT INTO wellinfo
@@ -242,7 +254,8 @@ export function projectReports(req, res, next) {
     res.render('projects/reports', {
       title: project.operator_name || 'Project reports',
       project,
-      reports
+      reports,
+      notice: clean(req.query.notice, 300)
     });
   } catch (error) {
     next(error);
@@ -293,7 +306,8 @@ export function reportDetail(req, res, next) {
       bypassed,
       dailyWaste,
       personnel,
-      additional
+      additional,
+      notice: clean(req.query.notice, 300)
     });
   } catch (error) {
     next(error);

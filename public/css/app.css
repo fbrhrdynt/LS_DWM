@@ -278,3 +278,121 @@ strong { font-weight: 700; }
   .badge-success { background: #173326; border-color: #28563d; color: #a4e9bd; }
   .danger-button { border-color: #66313a; color: #ffb4bd; }
 }
+
+/* DWM v0.4 daily report editor */
+.report-editor-page { padding-bottom: 110px; }
+.section-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0 10px;
+  margin: -2px 0 14px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.section-tab {
+  flex: 0 0 auto;
+  min-height: 35px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.section-tab:hover { color: var(--text); background: var(--surface-2); }
+.section-tab.active { color: var(--text); border-color: #9ebfe4; background: #eaf4ff; }
+.edit-section { margin-bottom: 12px; }
+.report-form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.report-form-grid .full-field { grid-column: 1 / -1; }
+.report-form-grid textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  padding: 9px 10px;
+  border: 1px solid #cfd7e1;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  font: inherit;
+  line-height: 1.45;
+}
+.report-form-grid textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(20,115,230,.11); }
+.report-form-grid input:disabled,
+.report-form-grid select:disabled,
+.report-form-grid textarea:disabled {
+  opacity: .72;
+  cursor: not-allowed;
+  background: var(--surface-2);
+}
+.editor-savebar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 8px 28px rgba(16,24,40,.14);
+  backdrop-filter: blur(12px);
+}
+.editor-savebar > div:first-child { min-width: 0; }
+.editor-savebar strong, .editor-savebar span { display: block; }
+.editor-savebar span { margin-top: 1px; font-size: 12px; }
+.savebar-actions { display: flex; gap: 7px; flex: 0 0 auto; }
+.primary-button:disabled { opacity: .5; cursor: not-allowed; }
+.alert.warning { background: #fff7e8; color: #82500a; border: 1px solid #f3d28f; }
+.report-actions-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.report-actions-copy { min-width: 0; }
+.report-actions-copy strong, .report-actions-copy span { display: block; }
+.report-actions-copy span { margin-top: 2px; font-size: 12px; }
+.report-control-actions { flex: 0 0 auto; }
+.unlock-form { display: flex; gap: 6px; align-items: center; }
+.unlock-form input {
+  width: 130px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid #cfd7e1;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+@media (max-width: 920px) {
+  .report-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-actions-panel { align-items: flex-start; flex-direction: column; }
+  .report-control-actions { width: 100%; justify-content: flex-start; }
+}
+
+@media (max-width: 620px) {
+  .report-form-grid { grid-template-columns: 1fr; }
+  .report-form-grid .full-field { grid-column: auto; }
+  .editor-savebar { bottom: 8px; align-items: stretch; flex-direction: column; gap: 8px; }
+  .savebar-actions { width: 100%; }
+  .savebar-actions > * { flex: 1; }
+  .unlock-form { width: 100%; }
+  .unlock-form input { flex: 1; width: auto; }
+  .report-control-actions form:not(.unlock-form) { flex: 1 1 auto; }
+  .report-control-actions button { width: 100%; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .section-tab.active { background: #172c42; border-color: #315f8d; }
+  .report-form-grid textarea, .unlock-form input { border-color: #36404b; }
+  .editor-savebar { background: rgba(23,28,34,.96); box-shadow: 0 8px 28px rgba(0,0,0,.28); }
+  .alert.warning { background: #352a15; color: #f6d28b; border-color: #6a5428; }
+}

@@ -11,6 +11,8 @@
     <a class="secondary-button" href="/projects">Projects</a>
   </div>
 
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+
   <% if (!reports.length) { %>
     <div class="empty-state">No daily reports have been created for this project.</div>
   <% } else { %>

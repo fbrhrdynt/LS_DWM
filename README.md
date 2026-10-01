@@ -111,3 +111,25 @@ curl https://dwm.logisourcedigital.web.id/health
 ```
 
 The expected health response reports `version: "0.3.0"`.
+
+
+## v0.4 Daily Report editor
+
+DWM v0.4 adds a server-rendered editable daily-report workflow while keeping the client payload small.
+
+Available report sections include report information, well data, active mud properties, shakers, centrifuges, cutting dryers, desander, desilter, cuttings by-passed, waste/activity, personnel, and retort/finalize values.
+
+Report edits are project-scoped on the server. Locked reports cannot be modified until they are unlocked with the project access code. Unlock attempts are rate limited.
+
+Copying a report creates the next report number and clones linked report tables inside one SQLite transaction.
+
+After deployment:
+
+```bash
+npm run check
+npm run db:check
+pm2 restart dwm --update-env
+curl https://dwm.logisourcedigital.web.id/health
+```
+
+The expected health version is `0.4.0`.

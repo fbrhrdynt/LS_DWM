@@ -12,9 +12,45 @@
       <span class="badge <%= report.lockreport === 'YES' ? 'badge-muted' : 'badge-success' %>">
         <%= report.lockreport === 'YES' ? 'Locked' : 'Open' %>
       </span>
+      <a class="primary-button" href="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/edit?section=report">Edit report</a>
       <a class="secondary-button" href="/projects/<%= project.id_project %>/reports">Reports</a>
     </div>
   </div>
+
+  <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
+
+  <section class="panel report-actions-panel">
+    <div class="report-actions-copy">
+      <strong>Report controls</strong>
+      <span class="muted">Locking prevents edits. Copy creates the next report using this report as the starting point.</span>
+    </div>
+    <div class="row-actions report-control-actions">
+      <% if (report.lockreport === 'YES') { %>
+        <form method="post" action="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/unlock" class="unlock-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input name="kodeakses" type="password" inputmode="numeric" autocomplete="off" placeholder="Access code" required>
+          <button class="secondary-button" type="submit">Unlock</button>
+        </form>
+      <% } else { %>
+        <form method="post" action="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/lock">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="secondary-button" type="submit">Lock report</button>
+        </form>
+      <% } %>
+
+      <form method="post" action="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/copy">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="secondary-button" type="submit">Copy as next report</button>
+      </form>
+
+      <% if (['MASTER', 'Supervisor'].includes(user.level)) { %>
+        <form method="post" action="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/delete" onsubmit="return confirm('Delete this daily report?')">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="danger-button" type="submit">Delete</button>
+        </form>
+      <% } %>
+    </div>
+  </section>
 
   <section class="detail-grid">
     <article class="panel detail-card">

@@ -13,12 +13,13 @@ import authRoutes from './routes/auth.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import projectRoutes from './routes/project.routes.js';
 import accountRoutes from './routes/account.routes.js';
+import reportRoutes from './routes/report.routes.js';
 import { pingDatabase } from './config/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.4.0';
 
 const app = express();
 
@@ -97,6 +98,7 @@ app.use(authRoutes);
 app.use(dashboardRoutes);
 app.use(projectRoutes);
 app.use(accountRoutes);
+app.use(reportRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

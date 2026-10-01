@@ -1,10 +1,10 @@
 {
   "name": "DWM",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "database": "SQLite via node:sqlite",
   "requires_node": ">=22.5",
   "mysql_required": false,
   "legacy_import": "scripts/import-legacy-sql.js",
   "database_path": "data/dwm.sqlite",
-  "phase": "account-project-management-and-report-overview"
+  "phase": "editable-daily-report-and-report-workflow"
 }
