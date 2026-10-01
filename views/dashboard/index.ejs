@@ -1,0 +1,33 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Overview</p>
+      <h1>Dashboard</h1>
+    </div>
+    <p class="muted">Signed in as <strong><%= user.level %></strong></p>
+  </div>
+
+  <section class="stats-grid" aria-label="Summary">
+    <article class="stat-card">
+      <span>Projects</span>
+      <strong><%= stats.projects %></strong>
+    </article>
+    <article class="stat-card">
+      <span>Reports</span>
+      <strong><%= stats.reports %></strong>
+    </article>
+    <article class="stat-card">
+      <span>Assets</span>
+      <strong><%= stats.assets %></strong>
+    </article>
+    <article class="stat-card">
+      <span>Active users</span>
+      <strong><%= stats.users %></strong>
+    </article>
+  </section>
+</main>
+
+<%- include('../partials/foot') %>

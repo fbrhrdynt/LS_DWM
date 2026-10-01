@@ -1,0 +1,29 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">DWM</p>
+      <h1>Projects</h1>
+    </div>
+  </div>
+
+  <% if (!projects.length) { %>
+    <div class="empty-state">No projects are available for this account.</div>
+  <% } else { %>
+    <div class="card-list">
+      <% projects.forEach(project => { %>
+        <a class="project-card" href="/projects/<%= project.id_project %>/reports">
+          <div>
+            <strong><%= project.operator_name || 'Untitled project' %></strong>
+            <p><%= project.contract || '-' %> · <%= project.drillingrig || '-' %></p>
+          </div>
+          <span class="arrow">→</span>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+</main>
+
+<%- include('../partials/foot') %>

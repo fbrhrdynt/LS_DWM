@@ -1,0 +1,33 @@
+<%- include('../partials/head') %>
+<main class="auth-shell">
+  <section class="login-panel">
+    <div class="brand brand-login">
+      <span class="brand-mark">D</span>
+      <span>DWM</span>
+    </div>
+    <h1>Sign in</h1>
+    <p class="muted">Use your existing DWM account.</p>
+
+    <% if (error) { %>
+      <div class="alert error"><%= error %></div>
+    <% } %>
+
+    <form method="post" action="/login" class="form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="returnTo" value="<%= returnTo %>">
+
+      <label>
+        <span>Username</span>
+        <input name="kode_login" autocomplete="username" required autofocus>
+      </label>
+
+      <label>
+        <span>Password</span>
+        <input name="pass_login" type="password" autocomplete="current-password" required>
+      </label>
+
+      <button class="primary-button" type="submit">Sign in</button>
+    </form>
+  </section>
+</main>
+<%- include('../partials/foot') %>

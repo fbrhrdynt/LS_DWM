@@ -1,0 +1,11 @@
+<%- include('../partials/head') %>
+<main class="error-page">
+  <div>
+    <p class="error-code">500</p>
+    <h1><%= title || 'Server error' %></h1>
+    <p class="muted">The server could not complete the request.</p>
+    <p class="muted">Reference: <%= errorId %></p>
+    <a class="primary-button inline-button" href="/">Back to DWM</a>
+  </div>
+</main>
+<%- include('../partials/foot') %>

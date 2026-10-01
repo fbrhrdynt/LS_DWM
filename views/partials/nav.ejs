@@ -1,0 +1,36 @@
+<header class="topbar">
+  <a class="brand" href="/dashboard" aria-label="DWM dashboard">
+    <span class="brand-mark">D</span>
+    <span>DWM</span>
+  </a>
+
+  <% if (user) { %>
+    <button class="menu-button" id="menuButton" type="button" aria-expanded="false" aria-controls="mobileNav">
+      Menu
+    </button>
+
+    <nav class="desktop-nav" aria-label="Main navigation">
+      <a class="<%= currentPath === '/dashboard' ? 'active' : '' %>" href="/dashboard">Dashboard</a>
+      <a class="<%= currentPath.startsWith('/projects') ? 'active' : '' %>" href="/projects">Projects</a>
+    </nav>
+
+    <div class="account">
+      <span class="account-name"><%= user.employee_name %></span>
+      <form action="/logout" method="post">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="link-button" type="submit">Sign out</button>
+      </form>
+    </div>
+  <% } %>
+</header>
+
+<% if (user) { %>
+  <nav class="mobile-nav" id="mobileNav" hidden>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/projects">Projects</a>
+    <form action="/logout" method="post">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit">Sign out</button>
+    </form>
+  </nav>
+<% } %>

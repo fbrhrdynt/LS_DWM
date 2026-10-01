@@ -1,0 +1,11 @@
+<%- include('../partials/head') %>
+<main class="error-page">
+  <div>
+    <p class="error-code">401</p>
+    <h1><%= title || 'Unauthorized' %></h1>
+    <p class="muted">Please sign in to continue.</p>
+    
+    <a class="primary-button inline-button" href="/">Back to DWM</a>
+  </div>
+</main>
+<%- include('../partials/foot') %>

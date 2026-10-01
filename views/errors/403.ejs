@@ -1,0 +1,11 @@
+<%- include('../partials/head') %>
+<main class="error-page">
+  <div>
+    <p class="error-code">403</p>
+    <h1><%= title || 'Access denied' %></h1>
+    <p class="muted">Your account does not have access to this resource.</p>
+    
+    <a class="primary-button inline-button" href="/">Back to DWM</a>
+  </div>
+</main>
+<%- include('../partials/foot') %>

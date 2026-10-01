@@ -1,0 +1,37 @@
+<%- include('../partials/head') %>
+<%- include('../partials/nav') %>
+
+<main class="page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow"><%= project.contract || 'Project' %></p>
+      <h1><%= project.operator_name || 'Reports' %></h1>
+      <p class="muted"><%= project.drillingrig || '' %> <%= project.wellname ? `· ${project.wellname}` : '' %></p>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Well</th>
+          <th>Location</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% reports.forEach(report => { %>
+          <tr>
+            <td><%= report.curdate || '-' %></td>
+            <td><%= report.wellname || '-' %></td>
+            <td><%= report.location || '-' %></td>
+            <td><span class="status"><%= report.lockreport === 'YES' ? 'Locked' : 'Open' %></span></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<%- include('../partials/foot') %>
