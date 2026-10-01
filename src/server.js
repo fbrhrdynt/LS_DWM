@@ -2,8 +2,7 @@ import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
-import session from 'express-session';
-import mysqlSessionFactory from 'express-mysql-session';
+import cookieSession from 'cookie-session';
 import helmet from 'helmet';
 import compression from 'compression';
 
@@ -21,6 +20,10 @@ const rootDir = path.resolve(__dirname, '..');
 
 const app = express();
 
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+  throw new Error('SESSION_SECRET must be set and at least 32 characters long.');
+}
+
 if (Number(process.env.TRUST_PROXY || 0) > 0) {
   app.set('trust proxy', Number(process.env.TRUST_PROXY));
 }
@@ -34,10 +37,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-app.use(compression({
-  threshold: 512
-}));
-
+app.use(compression({ threshold: 512 }));
 app.use(express.urlencoded({ extended: false, limit: '256kb' }));
 app.use(express.json({ limit: '256kb' }));
 
@@ -48,37 +48,13 @@ app.use('/static', express.static(path.join(rootDir, 'public'), {
   lastModified: true
 }));
 
-const MySQLStore = mysqlSessionFactory(session);
-const sessionStore = new MySQLStore({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT || 3306),
-  user: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
-  createDatabaseTable: true,
-  schema: {
-    tableName: 'dwm_sessions',
-    columnNames: {
-      session_id: 'session_id',
-      expires: 'expires',
-      data: 'data'
-    }
-  }
-});
-
-app.use(session({
+app.use(cookieSession({
   name: 'dwm.sid',
-  secret: process.env.SESSION_SECRET,
-  store: sessionStore,
-  resave: false,
-  saveUninitialized: false,
-  rolling: true,
-  cookie: {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 2 * 60 * 60 * 1000
-  }
+  keys: [process.env.SESSION_SECRET],
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: process.env.NODE_ENV === 'production',
+  maxAge: 2 * 60 * 60 * 1000
 }));
 
 app.use(loadUser);
@@ -94,12 +70,11 @@ app.get('/', (req, res) => {
   res.redirect(req.user ? '/dashboard' : '/login');
 });
 
-app.get('/health', async (req, res) => {
+app.get('/health', (req, res) => {
   try {
-    const db = await pingDatabase();
-    res.json({ ok: true, db, app: 'DWM' });
+    res.json({ ok: true, db: pingDatabase(), database: 'sqlite', app: 'DWM' });
   } catch {
-    res.status(503).json({ ok: false, db: false, app: 'DWM' });
+    res.status(503).json({ ok: false, db: false, database: 'sqlite', app: 'DWM' });
   }
 });
 

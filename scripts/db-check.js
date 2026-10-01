@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { db } from '../src/config/db.js';
+import { all, databasePath } from '../src/config/db.js';
 
 const requiredTables = [
   'projects',
@@ -23,17 +23,20 @@ const requiredTables = [
 ];
 
 try {
-  const [rows] = await db.query('SHOW TABLES');
-  const found = new Set(rows.map(row => Object.values(row)[0]));
+  const tables = new Set(
+    all(`SELECT name FROM sqlite_master WHERE type = 'table'`)
+      .map(row => row.name)
+  );
 
   let failed = false;
+
+  console.log(`Database: ${databasePath}`);
   for (const table of requiredTables) {
-    const ok = found.has(table);
-    console.log(`${ok ? 'OK ' : 'MISS'} ${table}`);
+    const ok = tables.has(table);
+    console.log(`${ok ? 'OK  ' : 'MISS'} ${table}`);
     if (!ok) failed = true;
   }
 
-  await db.end();
   process.exit(failed ? 1 : 0);
 } catch (error) {
   console.error(error.message);

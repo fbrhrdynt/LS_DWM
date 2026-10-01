@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { db } from '../config/db.js';
+import { get } from '../config/db.js';
 
 function normalizeLaravelBcrypt(hash) {
   if (typeof hash !== 'string') return hash;
@@ -7,7 +7,7 @@ function normalizeLaravelBcrypt(hash) {
 }
 
 export async function authenticate(kodeLogin, password) {
-  const [rows] = await db.execute(
+  const user = get(
     `SELECT id_user, employee_id, employee_name, email, kode_login, pass_login, level, id_project, status
      FROM xusers
      WHERE kode_login = ? AND status = 'Y'
@@ -15,7 +15,6 @@ export async function authenticate(kodeLogin, password) {
     [kodeLogin]
   );
 
-  const user = rows[0];
   if (!user) return null;
 
   const hash = normalizeLaravelBcrypt(user.pass_login);

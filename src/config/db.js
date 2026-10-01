@@ -1,22 +1,63 @@
-import mysql from 'mysql2/promise';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { DatabaseSync } from 'node:sqlite';
 
-export const db = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT || 3306),
-  user: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
-  waitForConnections: true,
-  connectionLimit: 10,
-  maxIdle: 5,
-  idleTimeout: 60000,
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0,
-  charset: 'utf8mb4'
-});
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '../..');
 
-export async function pingDatabase() {
-  const [rows] = await db.query('SELECT 1 AS ok');
-  return rows?.[0]?.ok === 1;
+const configuredPath = process.env.SQLITE_PATH || 'data/dwm.sqlite';
+export const databasePath = path.isAbsolute(configuredPath)
+  ? configuredPath
+  : path.join(rootDir, configuredPath);
+
+fs.mkdirSync(path.dirname(databasePath), { recursive: true });
+
+export const db = new DatabaseSync(databasePath);
+
+db.exec(`
+  PRAGMA journal_mode = WAL;
+  PRAGMA synchronous = NORMAL;
+  PRAGMA foreign_keys = ON;
+  PRAGMA busy_timeout = 5000;
+  PRAGMA temp_store = MEMORY;
+`);
+
+export function all(sql, params = []) {
+  return db.prepare(sql).all(...params);
+}
+
+export function get(sql, params = []) {
+  return db.prepare(sql).get(...params);
+}
+
+export function run(sql, params = []) {
+  return db.prepare(sql).run(...params);
+}
+
+export function transaction(fn) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const result = fn();
+    db.exec('COMMIT');
+    return result;
+  } catch (error) {
+    try { db.exec('ROLLBACK'); } catch {}
+    throw error;
+  }
+}
+
+export function pingDatabase() {
+  return get('SELECT 1 AS ok')?.ok === 1;
+}
+
+export function tableExists(name) {
+  return Boolean(get(
+    `SELECT 1
+     FROM sqlite_master
+     WHERE type = 'table' AND name = ?
+     LIMIT 1`,
+    [name]
+  ));
 }

@@ -1,6 +1,6 @@
-import { db } from '../config/db.js';
+import { get } from '../config/db.js';
 
-export async function loadUser(req, res, next) {
+export function loadUser(req, res, next) {
   try {
     res.locals.user = null;
     req.user = null;
@@ -8,7 +8,7 @@ export async function loadUser(req, res, next) {
     const userId = req.session?.userId;
     if (!userId) return next();
 
-    const [rows] = await db.execute(
+    const user = get(
       `SELECT id_user, employee_id, employee_name, email, kode_login, level, id_project, status
        FROM xusers
        WHERE id_user = ? AND status = 'Y'
@@ -16,9 +16,8 @@ export async function loadUser(req, res, next) {
       [userId]
     );
 
-    const user = rows[0];
     if (!user) {
-      req.session.destroy(() => {});
+      req.session = null;
       return next();
     }
 

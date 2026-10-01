@@ -1,46 +1,35 @@
 # DWM Rewrite Status
 
-This package is the Node.js foundation for the DWM rewrite.
-
-## Implemented in this foundation
+## Foundation implemented
 
 - DWM branding
-- Node.js 22 + Express
-- EJS server-side rendering
-- Existing MySQL/MariaDB schema compatibility
+- Node.js + Express + EJS
+- Embedded SQLite database; MySQL service is no longer required
+- One-time importer from the legacy MySQL/MariaDB SQL dump
 - Existing Laravel bcrypt password compatibility
-- Session storage in MySQL (`dwm_sessions`)
-- Login/logout
-- Login rate limiting
+- Signed cookie session with minimal payload
+- Login/logout and login rate limiting
 - CSRF protection
 - Role-aware access foundation
 - Project isolation for Operator/Staff
-- Project list
-- Report list per project
+- Project list and report list
 - Dashboard statistics
 - Mobile-first responsive shell
-- Dark mode via system preference
-- Compression
-- Static asset caching
-- Static-only service-worker cache
-- PM2 config
-- Nginx config example
+- Compression and static caching
+- PM2 and Nginx examples
 - Database compatibility checker
 
-## Not yet feature-parity
-
-The following legacy modules still need to be rewritten before Laravel can be retired:
+## Still to reach full feature parity
 
 - Account CRUD and account status management
 - Project CRUD
-- Well report detail
-- Well information editing
+- Full Well Report editing
+- Well information
 - Active Mud Properties
 - Shakers
 - Centrifuge 1/2/3
 - Cutting Dryer 1/2
-- Desander
-- Desilter
+- Desander / Desilter
 - Retort worksheet
 - Cuttings bypassed
 - Daily waste
@@ -50,7 +39,7 @@ The following legacy modules still need to be rewritten before Laravel can be re
 - Report lock/unlock
 - PDF generation
 - Excel summary export
-- Assets CRUD / COC
+- Assets / COC
 - Preventive maintenance
 - PM document library
 - Inspection categories/details/certificates
@@ -58,4 +47,4 @@ The following legacy modules still need to be rewritten before Laravel can be re
 - ownCloud/WebDAV integration
 - Full regression/security tests
 
-Do not switch the production domain away from Laravel until the feature-parity checklist is complete.
+Do not retire the legacy production application until this checklist is complete and verified.

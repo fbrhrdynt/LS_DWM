@@ -31,27 +31,21 @@ export async function login(req, res, next) {
       });
     }
 
-    req.session.regenerate((error) => {
-      if (error) return next(error);
+    // cookie-session is signed and intentionally stores only a tiny amount of data.
+    // Rotate the session payload on successful login.
+    req.session = { userId: user.id_user };
 
-      req.session.userId = user.id_user;
-      req.session.save((saveError) => {
-        if (saveError) return next(saveError);
-        const safeTarget = returnTo.startsWith('/') && !returnTo.startsWith('//')
-          ? returnTo
-          : '/dashboard';
-        res.redirect(safeTarget);
-      });
-    });
+    const safeTarget = returnTo.startsWith('/') && !returnTo.startsWith('//')
+      ? returnTo
+      : '/dashboard';
+
+    res.redirect(safeTarget);
   } catch (error) {
     next(error);
   }
 }
 
-export function logout(req, res, next) {
-  req.session.destroy((error) => {
-    if (error) return next(error);
-    res.clearCookie('dwm.sid');
-    res.redirect('/login');
-  });
+export function logout(req, res) {
+  req.session = null;
+  res.redirect('/login');
 }

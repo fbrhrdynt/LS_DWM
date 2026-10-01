@@ -1,27 +1,27 @@
 {
   "name": "dwm",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "DWM - lightweight Node.js rewrite foundation for the legacy Laravel application",
+  "description": "DWM - lightweight Node.js rewrite of the legacy Laravel application",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.5"
   },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "db:check": "node scripts/db-check.js"
+    "db:check": "node scripts/db-check.js",
+    "db:import": "node scripts/import-legacy-sql.js",
+    "db:backup": "node scripts/backup-db.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "compression": "^1.8.1",
+    "cookie-session": "^2.1.1",
     "dotenv": "^17.2.2",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
-    "express-mysql-session": "^3.0.3",
     "express-rate-limit": "^8.1.0",
-    "express-session": "^1.18.2",
-    "helmet": "^8.1.0",
-    "mysql2": "^3.15.0"
+    "helmet": "^8.1.0"
   }
 }
