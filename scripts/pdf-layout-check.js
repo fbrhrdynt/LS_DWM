@@ -22,6 +22,9 @@ if (/Math\.max\(y,\s*dwmTop/.test(rendererSource)) {
 if (!/pdf_engineer_label/.test(rendererSource) || !/pdf_activity_label/.test(rendererSource)) {
   throw new Error('PDF dynamic Engineer/Activity labels are missing.');
 }
+if (/labels\.right,\s*water\s*\?/.test(rendererSource)) {
+  throw new Error('PDF Active Mud renderer still references undefined legacy variable `water`.');
+}
 const chunks = [];
 const stream = new PassThrough();
 stream.on('data', chunk => chunks.push(chunk));

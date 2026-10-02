@@ -431,7 +431,7 @@ function drawActiveMud(doc, data, x, y, width) {
 
   const rows = [
     ['Mud Weight', withUnit(d.mudweight, plain(d.mwunit)), '% LGS', plain(d.lgsactive), 'PV', withUnit(d.pv, 'cps'), 'YP', withUnit(d.yp, 'lbs/100 ft2'), labels.left, plain(result1)],
-    ['Mud Temp.', withUnit(d.mudtemp, d.tempunit === 'degc' ? 'C' : d.tempunit === 'degf' ? 'F' : plain(d.tempunit)), '% HGS', plain(d.hgsactive), 'Sand Cont', plain(d.sandcontent), 'Chlorides', withUnit(d.chlorides, 'mg/L'), labels.right, water ? withUnit(result2, '%') : plain(result2)]
+    ['Mud Temp.', withUnit(d.mudtemp, d.tempunit === 'degc' ? 'C' : d.tempunit === 'degf' ? 'F' : plain(d.tempunit)), '% HGS', plain(d.hgsactive), 'Sand Cont', plain(d.sandcontent), 'Chlorides', withUnit(d.chlorides, 'mg/L'), labels.right, plain(result2)]
   ];
 
   for (const r of rows) {
@@ -904,8 +904,6 @@ export function pipeDailyReportPdf(res, data) {
     }
   });
 
-  doc.pipe(res);
-
   const x = 13;
   const width = doc.page.width - 26;
 
@@ -926,5 +924,9 @@ export function pipeDailyReportPdf(res, data) {
 
   footer(doc);
 
+  // Do not start the HTTP response until the entire single-page document has
+  // rendered successfully. If a renderer bug throws above, Express can still
+  // return its normal 500 page instead of Nginx reporting a broken upstream.
+  doc.pipe(res);
   doc.end();
 }

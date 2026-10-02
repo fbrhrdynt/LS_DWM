@@ -29,7 +29,7 @@ import { pingDatabase } from './config/db.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const APP_VERSION = '0.8.6';
+const APP_VERSION = '0.8.6.1';
 
 const app = express();
 
