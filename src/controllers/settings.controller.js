@@ -45,10 +45,16 @@ export function updateReportSettings(req, res, next) {
     const titleTemplate = clean(req.body.report_title_template, 120);
     const line1 = clean(req.body.company_header_line_1, 180);
     const line2 = clean(req.body.company_header_line_2, 220);
+    const accent = clean(req.body.pdf_accent_color, 20);
+    const engineerLabel = clean(req.body.pdf_engineer_label, 80);
+    const activityLabel = clean(req.body.pdf_activity_label, 80);
 
     if (!titleTemplate) throw new Error('Report title is required.');
     if (!line1) throw new Error('Header line 1 is required.');
     if (!line2) throw new Error('Header line 2 is required.');
+    if (!/^#[0-9a-fA-F]{6}$/.test(accent)) throw new Error('PDF accent color must use #RRGGBB format.');
+    if (!engineerLabel) throw new Error('Engineer label is required.');
+    if (!activityLabel) throw new Error('Activity label is required.');
 
     const current = getReportSettings();
     const uploadedPath = req.file ? relativeUploadPath(req.file) : null;
@@ -57,6 +63,9 @@ export function updateReportSettings(req, res, next) {
     setReportSetting('report_title_template', titleTemplate);
     setReportSetting('company_header_line_1', line1);
     setReportSetting('company_header_line_2', line2);
+    setReportSetting('pdf_accent_color', accent.toUpperCase());
+    setReportSetting('pdf_engineer_label', engineerLabel);
+    setReportSetting('pdf_activity_label', activityLabel);
 
     if (uploadedPath) {
       setReportSetting('company_logo', uploadedPath);
@@ -78,7 +87,10 @@ export function updateReportSettings(req, res, next) {
         ...getReportSettings(),
         report_title_template: req.body?.report_title_template ?? '',
         company_header_line_1: req.body?.company_header_line_1 ?? '',
-        company_header_line_2: req.body?.company_header_line_2 ?? ''
+        company_header_line_2: req.body?.company_header_line_2 ?? '',
+        pdf_accent_color: req.body?.pdf_accent_color ?? DEFAULT_REPORT_SETTINGS.pdf_accent_color,
+        pdf_engineer_label: req.body?.pdf_engineer_label ?? '',
+        pdf_activity_label: req.body?.pdf_activity_label ?? ''
       };
 
       return res.status(422).render('settings/report', {

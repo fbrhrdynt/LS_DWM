@@ -13,6 +13,15 @@ if (/ellipsis:\s*options\.ellipsis\s*!==\s*false/.test(rendererSource)) {
 if (!/ellipsis:\s*false/.test(rendererSource)) {
   throw new Error('PDF renderer must explicitly disable automatic cell ellipsis.');
 }
+if (!/function labelUnitCell\(/.test(rendererSource)) {
+  throw new Error('PDF renderer must keep units inside the parameter cell.');
+}
+if (/Math\.max\(y,\s*dwmTop/.test(rendererSource)) {
+  throw new Error('PDF renderer still inserts the legacy blank gap above Oil Recovered.');
+}
+if (!/pdf_engineer_label/.test(rendererSource) || !/pdf_activity_label/.test(rendererSource)) {
+  throw new Error('PDF dynamic Engineer/Activity labels are missing.');
+}
 const chunks = [];
 const stream = new PassThrough();
 stream.on('data', chunk => chunks.push(chunk));

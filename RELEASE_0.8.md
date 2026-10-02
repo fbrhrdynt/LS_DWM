@@ -51,3 +51,15 @@ SMTP requires credentials to send reset emails. WebDAV requires ownCloud/WebDAV 
 - Corrected double-padding calculation in PDF text fitting.
 - Labels now shrink only as needed while preserving the complete text.
 - Added regression guard so automatic cell ellipsis cannot be reintroduced silently.
+
+## v0.8.4 final improvements
+
+- Full derived-formula recalculation chain across Well → Centrifuge → Desander/Desilter → Retort → Daily Waste.
+- Manual **Recalculate formulas** action for legacy reports.
+- Shaker input restored to compact row/table layout.
+- Personnel input restored to side-by-side Day/Night layout.
+- By-Passed input restored to percentage + slider + paired depth/unit layout.
+- PDF accent color configurable from Settings.
+- PDF Engineer and Company Activity headings configurable from Settings.
+- Retort and Centrifuge unit columns merged into the parameter cell; blank units no longer render `-`.
+- Recovery/Engineer block begins immediately after Retort while Company Activities continues alongside it, removing the large blank area.

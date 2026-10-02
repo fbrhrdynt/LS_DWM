@@ -34,7 +34,7 @@
 
   <% if (['well','centrifuge1','centrifuge2','centrifuge3','desander','desilter','retort','waste'].includes(sectionId)) { %>
     <div class="formula-note">
-      <strong>Auto calculation active.</strong> Fields marked <span class="auto-chip">Auto</span> are recalculated while you type and recalculated again on the server when saved.
+      <strong>Auto calculation active.</strong> Fields marked <span class="auto-chip">Auto</span> recalculate while you type. Saving upstream data also recalculates dependent Centrifuge, Desander/Desilter, Retort, Recovery, Volume Control and Daily Waste values on the server.
     </div>
   <% } %>
 
@@ -220,6 +220,115 @@
           </table>
         </div>
       </section>
+    <% } else if (sectionId === 'shakers') { %>
+      <section class="panel edit-section">
+        <div class="section-heading">
+          <div>
+            <h2>Shakers</h2>
+            <p class="muted">One row per shaker, matching the original Laravel input layout.</p>
+          </div>
+        </div>
+
+        <div class="table-scroll shaker-input-scroll">
+          <table class="data-table shaker-input-table">
+            <thead>
+              <tr>
+                <th>Shaker</th>
+                <th>Model</th>
+                <th>Screen size</th>
+                <th>Running hour</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% [1,2,3,4,5,6].forEach(n => {
+                const nameKey = `sh${n}_name`;
+                const nameValue = data[nameKey] || `Shaker #${n}`;
+              %>
+                <tr>
+                  <td>
+                    <input name="<%= nameKey %>" value="<%= nameValue %>" readonly aria-readonly="true" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                  </td>
+                  <td><input name="sh<%= n %>_model" value="<%= data[`sh${n}_model`] ?? '' %>" placeholder="Model" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></td>
+                  <td><input name="sh<%= n %>_screensize" value="<%= data[`sh${n}_screensize`] ?? '' %>" placeholder="Screen size" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></td>
+                  <td><input name="sh<%= n %>_runninghour" type="number" step="any" inputmode="decimal" value="<%= data[`sh${n}_runninghour`] ?? '' %>" placeholder="Hours" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+
+        <label class="standalone-field">
+          <span>Screens changed</span>
+          <input name="screens_changed" value="<%= data.screens_changed ?? '' %>" placeholder="Insert information about screen changes" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+        </label>
+      </section>
+    <% } else if (sectionId === 'personnel') { %>
+      <section class="panel edit-section">
+        <div class="section-heading">
+          <div>
+            <h2>Personnel</h2>
+            <p class="muted">Day and night crews are kept side-by-side.</p>
+          </div>
+        </div>
+
+        <div class="personnel-input-grid">
+          <div class="shift-column">
+            <div class="shift-heading">Day shift</div>
+            <label><span>Day Shift 1</span><input name="ds1_name" value="<%= data.ds1_name ?? '' %>" placeholder="Name" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+            <label><span>Day Shift 2</span><input name="ds2_name" value="<%= data.ds2_name ?? '' %>" placeholder="Name" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+          </div>
+          <div class="shift-column">
+            <div class="shift-heading">Night shift</div>
+            <label><span>Night Shift 1</span><input name="ns1_name" value="<%= data.ns1_name ?? '' %>" placeholder="Name" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+            <label><span>Night Shift 2</span><input name="ns2_name" value="<%= data.ns2_name ?? '' %>" placeholder="Name" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+          </div>
+        </div>
+      </section>
+    <% } else if (sectionId === 'bypassed') { %>
+      <section class="panel edit-section">
+        <div class="section-heading">
+          <div>
+            <h2>Cuttings By-Passed (to Overboard)</h2>
+            <p class="muted">Percentage, volume and depth range in one compact form.</p>
+          </div>
+        </div>
+
+        <div class="bypass-grid">
+          <label class="bypass-percent-field">
+            <span>Percentage (%) Cuttings By-Passed</span>
+            <div class="bypass-percentage-control">
+              <input data-bypass-percentage name="percentage" type="number" min="0" max="100" step="1" value="<%= data.percentage ?? 0 %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <span>%</span>
+              <input data-bypass-range type="range" min="0" max="100" step="1" value="<%= data.percentage ?? 0 %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+            </div>
+          </label>
+
+          <label>
+            <span>Volume (bbls)</span>
+            <input name="volume" type="number" min="0" step="any" inputmode="decimal" value="<%= data.volume ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+          </label>
+
+          <label>
+            <span>From Depth</span>
+            <div class="input-with-unit-select">
+              <input name="from_depth" type="number" min="0" step="any" inputmode="decimal" value="<%= data.from_depth ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <select name="each_from_depth" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                <% ['Metre','Feet'].forEach(unit => { %><option value="<%= unit %>" <%= String(data.each_from_depth || 'Metre') === unit ? 'selected' : '' %>><%= unit %></option><% }) %>
+              </select>
+            </div>
+          </label>
+
+          <label>
+            <span>To Depth</span>
+            <div class="input-with-unit-select">
+              <input name="to_depth" type="number" min="0" step="any" inputmode="decimal" value="<%= data.to_depth ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <select name="each_to_depth" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                <% ['Metre','Feet'].forEach(unit => { %><option value="<%= unit %>" <%= String(data.each_to_depth || 'Metre') === unit ? 'selected' : '' %>><%= unit %></option><% }) %>
+              </select>
+            </div>
+          </label>
+        </div>
+      </section>
     <% } else { %>
       <% section.groups.forEach(group => { %>
         <section class="panel edit-section">
@@ -269,7 +378,9 @@
                     class="<%= field.calculated ? 'calculated-input' : '' %>"
                     <% if (field.type === 'number') { %>step="<%= field.step || 'any' %>" inputmode="decimal"<% } %>
                     <% if (field.min !== undefined) { %>min="<%= field.min %>"<% } %>
+                    <% if (field.max !== undefined) { %>max="<%= field.max %>"<% } %>
                     <%= field.required ? 'required' : '' %>
+                    <%= field.readonly ? 'readonly aria-readonly=true' : '' %>
                     <%= field.calculated ? 'readonly aria-readonly=true' : '' %>
                     <%= report.lockreport === 'YES' ? 'disabled' : '' %>
                   >
@@ -296,4 +407,5 @@
 
 <script id="reportCalcContext" type="application/json"><%- JSON.stringify(calcContext || {}).replace(/</g, '\\u003c') %></script>
 <script src="/static/js/report-calculations.js?v=<%= assetVersion %>" defer></script>
+<script src="/static/js/report-ui.js?v=<%= assetVersion %>" defer></script>
 <%- include('../partials/foot') %>

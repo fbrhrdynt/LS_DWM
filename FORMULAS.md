@@ -100,3 +100,21 @@ Examples:
 - `2028-01-31 + 1 Month = 2028-02-29`
 
 Inspection status and PM due badges use the configured DWM timezone and a 30-day warning window.
+
+## v0.8.4 automatic recalculation chain
+
+Saving any upstream section now refreshes all downstream derived values on the server:
+
+```text
+Well / Active Mud
+  -> Centrifuge 1/2/3
+  -> Desander / Desilter
+  -> Retort calculated fields
+  -> Oil & Mud Recovered
+  -> Volume Control / Finalize
+  -> Daily Waste / Avg MOC / Avg Discharge
+```
+
+A manual **Recalculate formulas** action is also available on each unlocked report for imported/legacy records.
+
+The legacy formulas remain unchanged; v0.8.4 fixes when they are recalculated and persisted.

@@ -8,7 +8,8 @@ import {
   lockReport,
   unlockReport,
   copyReport,
-  deleteReport
+  deleteReport,
+  recalculateReport
 } from '../controllers/report.controller.js';
 
 const router = Router();
@@ -54,6 +55,12 @@ router.post(
   '/projects/:projectId/reports/:wellId/copy',
   ...reportAccess,
   copyReport
+);
+
+router.post(
+  '/projects/:projectId/reports/:wellId/recalculate',
+  ...reportAccess,
+  recalculateReport
 );
 
 router.post(

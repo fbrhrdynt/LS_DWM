@@ -45,6 +45,13 @@
         <button class="secondary-button" type="submit">Copy as next report</button>
       </form>
 
+      <% if (report.lockreport !== 'YES') { %>
+        <form method="post" action="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/recalculate">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="secondary-button" type="submit">Recalculate formulas</button>
+        </form>
+      <% } %>
+
       <% if (['MASTER', 'Supervisor'].includes(user.level)) { %>
         <form method="post" action="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>/delete" onsubmit="return confirm('Delete this daily report?')">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">

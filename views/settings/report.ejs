@@ -61,6 +61,39 @@
         >
       </label>
 
+      <label>
+        <span>PDF accent color</span>
+        <div class="color-setting-row">
+          <input name="pdf_accent_color" type="color" value="<%= settings.pdf_accent_color || '#267544' %>" aria-label="PDF accent color">
+          <input name="pdf_accent_color_text" type="text" value="<%= settings.pdf_accent_color || '#267544' %>" readonly tabindex="-1">
+        </div>
+        <small>Used for PDF section headers, chart bars and table accents.</small>
+      </label>
+
+      <label>
+        <span>Engineer section name</span>
+        <input
+          name="pdf_engineer_label"
+          maxlength="80"
+          value="<%= settings.pdf_engineer_label %>"
+          placeholder="BSS ENGINEERS"
+          required
+        >
+        <small>Example: BSS ENGINEERS, DWM ENGINEERS, SOLIDS CONTROL ENGINEERS.</small>
+      </label>
+
+      <label class="full-field">
+        <span>Company activity section name</span>
+        <input
+          name="pdf_activity_label"
+          maxlength="80"
+          value="<%= settings.pdf_activity_label %>"
+          placeholder="BSS ACTIVITIES"
+          required
+        >
+        <small>Replaces the fixed STEP OIL TOOLS ACTIVITIES heading in the PDF.</small>
+      </label>
+
       <label class="full-field">
         <span>Our company logo - left side</span>
         <input name="company_logo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
@@ -138,5 +171,14 @@
     <% } %>
   </section>
 </main>
+
+<script>
+  (() => {
+    const picker = document.querySelector('input[name="pdf_accent_color"]');
+    const text = document.querySelector('input[name="pdf_accent_color_text"]');
+    if (!picker || !text) return;
+    picker.addEventListener('input', () => { text.value = picker.value.toUpperCase(); });
+  })();
+</script>
 
 <%- include('../partials/foot') %>

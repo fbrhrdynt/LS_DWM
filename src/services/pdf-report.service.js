@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
 
-const GREEN = '#267544';
+let GREEN = '#267544';
 const WHITE = '#ffffff';
 const BLACK = '#111111';
 const GREY = '#666666';
@@ -156,6 +156,61 @@ function cell(doc, x, y, width, height, text, options = {}) {
   doc.restore();
 }
 
+
+function labelUnitCell(doc, x, y, width, height, label, unit = '', options = {}) {
+  if (options.fill) {
+    doc.save().rect(x, y, width, height).fill(options.fill).restore();
+  }
+
+  if (options.border !== false) {
+    doc.save()
+      .lineWidth(options.lineWidth || 0.35)
+      .strokeColor(options.borderColor || BORDER)
+      .rect(x, y, width, height)
+      .stroke()
+      .restore();
+  }
+
+  const cleanUnit = plain(unit, '');
+  const unitWidth = cleanUnit ? Math.min(40, Math.max(24, width * 0.27)) : 0;
+  const labelWidth = Math.max(1, width - unitWidth - 6);
+  const fontSize = options.fontSize || 4.75;
+  const minFontSize = options.minFontSize || 3.75;
+
+  doc.save();
+  doc.rect(x + 0.25, y + 0.25, Math.max(0.5, width - 0.5), Math.max(0.5, height - 0.5)).clip();
+
+  const labelText = fitText(doc, plain(label), labelWidth, height - 2.2, {
+    fontSize,
+    minFontSize,
+    bold: options.bold,
+    align: 'left',
+    fallback: ''
+  });
+  doc.fillColor(options.color || BLACK)
+    .font(options.bold ? 'Helvetica-Bold' : 'Helvetica')
+    .text(labelText, x + 2, y + 1.2, {
+      width: labelWidth,
+      height: height - 2.2,
+      align: 'left',
+      lineGap: 0,
+      ellipsis: false
+    });
+
+  if (cleanUnit) {
+    doc.font('Helvetica').fontSize(Math.max(3.7, fontSize - 0.15))
+      .text(cleanUnit, x + width - unitWidth - 2, y + 1.2, {
+        width: unitWidth,
+        height: height - 2.2,
+        align: 'right',
+        lineGap: 0,
+        ellipsis: false
+      });
+  }
+
+  doc.restore();
+}
+
 function row(doc, x, y, totalWidth, cells, options = {}) {
   const height = options.height || 10;
   let cx = x;
@@ -165,7 +220,7 @@ function row(doc, x, y, totalWidth, cells, options = {}) {
       ? totalWidth * (item.widthPct / 100)
       : item.width;
 
-    cell(doc, cx, y, width, item.height || height, item.text, {
+    const cellOptions = {
       align: item.align,
       bold: item.bold,
       fill: item.fill,
@@ -177,7 +232,13 @@ function row(doc, x, y, totalWidth, cells, options = {}) {
       padX: item.padX,
       padY: item.padY,
       ellipsis: item.ellipsis
-    });
+    };
+
+    if (Object.hasOwn(item, 'unit')) {
+      labelUnitCell(doc, cx, y, width, item.height || height, item.text, item.unit, cellOptions);
+    } else {
+      cell(doc, cx, y, width, item.height || height, item.text, cellOptions);
+    }
     cx += width;
   }
 
@@ -269,7 +330,7 @@ function tryImageCentered(doc, candidates, boxX, boxY, boxWidth, boxHeight, maxW
 
 function drawHeader(doc, data, x, y, width) {
   const { project, report } = data;
-  const settings = getReportSettings();
+  const settings = data.reportSettings || getReportSettings();
   const reportNo = formatReportNumber(report.urut, report.id_wellinfo);
   const title = buildReportTitle(settings, reportNo);
 
@@ -392,7 +453,7 @@ function drawEquipment(doc, data, x, y, width) {
     let cx = x;
 
     cell(doc, cx, y, widths[0], h * 2, 'C E N T R I F U G E S', {
-      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.4
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.6
     });
     cx += widths[0];
 
@@ -410,7 +471,7 @@ function drawEquipment(doc, data, x, y, width) {
 
     const shakerGroupW = widths[4] + widths[5] + widths[6];
     cell(doc, cx, y, shakerGroupW, h, 'SHALE SHAKERS & SCREENS', {
-      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.2
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.25
     });
     cell(doc, cx, y + h, widths[4], h, 'Shakers', { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.0 });
     cell(doc, cx + widths[4], y + h, widths[5], h, 'Model (Type)', { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 5.0 });
@@ -418,7 +479,7 @@ function drawEquipment(doc, data, x, y, width) {
     cx += shakerGroupW;
 
     cell(doc, cx, y, widths[7], h * 2, 'Running\nHrs', {
-      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.8
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.9
     });
 
     y += h * 2;
@@ -435,8 +496,7 @@ function drawEquipment(doc, data, x, y, width) {
 
   for (const r of shakerRows) {
     y = row(doc, x, y, width, [
-      textCell(r[0], 19, { bold: false, minFontSize: 3.8 }),
-      textCell(r[1], 5, { align: 'right' }),
+      textCell(r[0], 24, { unit: plain(r[1]), minFontSize: 3.8 }),
       textCell(r[2], 9, { align: 'center' }),
       textCell(r[3], 9.5, { align: 'center' }),
       textCell(r[4], 10, { align: 'center' }),
@@ -444,53 +504,50 @@ function drawEquipment(doc, data, x, y, width) {
       textCell(r[6], 15, { align: 'center' }),
       textCell(r[7], 15, { align: 'center' }),
       textCell(r[8], 7.5, { align: 'center' })
-    ], { height: 9.2, fontSize: 4.75 });
+    ], { height: 9.4, fontSize: 4.85, minFontSize: 3.8 });
   }
 
   y = row(doc, x, y, width, [
-    textCell('Effluent Return to', 19),
-    textCell('', 5),
+    textCell('Effluent Return to', 24, { unit: '' }),
     textCell(d.cf1_effluentreturn, 9, { align: 'center' }),
     textCell(d.cf2_effluentreturn, 9.5, { align: 'center' }),
     textCell(d.cf3_effluentreturn, 10, { align: 'center' }),
-    textCell('Screens Changed', 10, { align: 'center' }),
-    textCell(d.screens_changed, 37.5, { align: 'left' })
-  ], { height: 9.4, fontSize: 4.85, minFontSize: 4.25 });
+    textCell('Screens Changed', 10, { align: 'center', fontSize: 4.4 }),
+    textCell(d.screens_changed, 37.5, { align: 'left', minFontSize: 3.8 })
+  ], { height: 9.4, fontSize: 4.85, minFontSize: 3.8 });
 
   y = row(doc, x, y, width, [
-    textCell('Underflow Discharge to', 19),
-    textCell('', 5),
+    textCell('Underflow Discharge to', 24, { unit: '' }),
     textCell(d.cf1_underflow, 9, { align: 'center' }),
     textCell(d.cf2_underflow, 9.5, { align: 'center' }),
     textCell(d.cf3_underflow, 10, { align: 'center' }),
     greenCell('DESANDER', 23),
     greenCell('DESILTER', 24.5)
-  ], { height: 10, fontSize: 4.8 });
+  ], { height: 10, fontSize: 4.9 });
 
   const combined = [
     ['Running Hours', '(hrs)', d.cf1_runninghour, d.cf2_runninghour, d.cf3_runninghour, 'Running Hours', ds.run_hour, 'Running Hours', di.run_hour],
     ['Feed-in Rate (Flow Rate)', '(gal/min)', d.cf1_feedinrate, d.cf2_feedinrate, d.cf3_feedinrate, 'Feed Rate (gal/min)', ds.feed_rate, 'Feed Rate (gal/min)', di.feed_rate],
-    ['Feed-in Density (WT In)', `(${val(d.mwunit)})`, d.cf1_feedindensity, d.cf2_feedindensity, d.cf3_feedindensity, 'Feed Density', ds.feed_dens, 'Feed Density', di.feed_dens],
-    ['Centrate Density (WT Out)', `(${val(d.mwunit)})`, d.cf1_centratedens, d.cf2_centratedens, d.cf3_centratedens, 'Overflow Density', ds.overflow_dens, 'Overflow Density', di.overflow_dens],
-    ['Cake Discard Density (Discard WT)', `(${val(d.mwunit)})`, d.cf1_cakediscdens, d.cf2_cakediscdens, d.cf3_cakediscdens, 'Underflow Density', ds.underflow_dens, 'Underflow Density', di.underflow_dens],
+    ['Feed-in Density (WT In)', plain(d.mwunit) ? `(${plain(d.mwunit)})` : '', d.cf1_feedindensity, d.cf2_feedindensity, d.cf3_feedindensity, 'Feed Density', ds.feed_dens, 'Feed Density', di.feed_dens],
+    ['Centrate Density (WT Out)', plain(d.mwunit) ? `(${plain(d.mwunit)})` : '', d.cf1_centratedens, d.cf2_centratedens, d.cf3_centratedens, 'Overflow Density', ds.overflow_dens, 'Overflow Density', di.overflow_dens],
+    ['Cake Discard Density (Discard WT)', plain(d.mwunit) ? `(${plain(d.mwunit)})` : '', d.cf1_cakediscdens, d.cf2_cakediscdens, d.cf3_cakediscdens, 'Underflow Density', ds.underflow_dens, 'Underflow Density', di.underflow_dens],
     ['Centrate Return Rate', '(gal/min)', d.cf1_centratereturn, d.cf2_centratereturn, d.cf3_centratereturn, 'Vol Discharge (bbls)', ds.vol_discharge, 'Vol Discharge (bbls)', di.vol_discharge],
     ['Cake Discard Flow Rate', '(gal/min)', d.cf1_cakediscflow, d.cf2_cakediscflow, d.cf3_cakediscflow, 'Mud-on-Cuttings', ds.mudoncuttings, 'Mud-on-Cuttings', di.mudoncuttings],
     ['Mass Cake Discharge', '(kg)', d.cf1_masscake, d.cf2_masscake, d.cf3_masscake, 'Vol Mud Discharge (bbls)', ds.volmud_discharge, 'Vol Mud Discharge (bbls)', di.volmud_discharge],
-    ['Volume Cake Discharge', `(${val(d.volholeunit)})`, d.cf1_volcake, d.cf2_volcake, d.cf3_volcake, 'Head Pressure (psi)', ds.head_pressure, 'Head Pressure (psi)', di.head_pressure]
+    ['Volume Cake Discharge', plain(d.volholeunit) ? `(${plain(d.volholeunit)})` : '', d.cf1_volcake, d.cf2_volcake, d.cf3_volcake, 'Head Pressure (psi)', ds.head_pressure, 'Head Pressure (psi)', di.head_pressure]
   ];
 
   for (const r of combined) {
     y = row(doc, x, y, width, [
-      textCell(r[0], 19, { minFontSize: 3.8 }),
-      textCell(r[1], 5, { align: 'right', minFontSize: 3.7 }),
+      textCell(r[0], 24, { unit: plain(r[1]), minFontSize: 3.7 }),
       textCell(r[2], 9, { align: 'center' }),
       textCell(r[3], 9.5, { align: 'center' }),
       textCell(r[4], 10, { align: 'center' }),
-      textCell(r[5], 15, { fontSize: 4.35 }),
+      textCell(r[5], 15, { fontSize: 4.4 }),
       textCell(r[6], 8, { align: 'center' }),
-      textCell(r[7], 15, { fontSize: 4.35 }),
+      textCell(r[7], 15, { fontSize: 4.4 }),
       textCell(r[8], 9.5, { align: 'center' })
-    ], { height: 9.2, fontSize: 4.65 });
+    ], { height: 9.35, fontSize: 4.75, minFontSize: 3.7 });
   }
 
   return y;
@@ -579,6 +636,9 @@ function drawRetort(doc, data, x, y, width) {
   const w = data.dailyWaste;
   const a = data.additional;
   const p = data.personnel;
+  const settings = data.reportSettings || getReportSettings();
+  const engineerLabel = plain(settings.pdf_engineer_label, 'STEP OIL TOOLS ENGINEERS');
+  const activityLabel = plain(settings.pdf_activity_label, 'STEP OIL TOOLS ACTIVITIES');
 
   const leftPct = 72.2;
   const rightPct = 27.8;
@@ -588,64 +648,57 @@ function drawRetort(doc, data, x, y, width) {
 
   {
     const h = 10;
-    const widths = pctWidths(width, [19.5, 5.5, 9.5, 9.5, 9.2, 9.5, 9.5, 13.9, 13.9]);
+    const widths = pctWidths(width, [25, 9.5, 9.5, 9.2, 9.5, 9.5, 13.9, 13.9]);
     let cx = x;
 
     cell(doc, cx, y, widths[0], h * 2, 'RETORT WORKSHEET\n& VOLUME DISCHARGE', {
-      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.7
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.8
     });
     cx += widths[0];
 
-    cell(doc, cx, y, widths[1], h * 2, '', { fill: GREEN, color: WHITE });
+    cell(doc, cx, y, widths[1], h * 2, 'Shakers\nOverflow', {
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.8
+    });
     cx += widths[1];
 
-    cell(doc, cx, y, widths[2], h * 2, 'Shakers\nOverflow', {
-      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.7
+    cell(doc, cx, y, widths[2], h * 2, 'Dryer', {
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.9
     });
     cx += widths[2];
 
-    cell(doc, cx, y, widths[3], h * 2, 'Dryer', {
-      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.8
-    });
-    cx += widths[3];
-
-    for (const [title, serial, w] of [
-      ['Centrifuge 1', d.cf1_sn, widths[4]],
-      ['Centrifuge 2', d.cf2_sn, widths[5]],
-      ['Centrifuge 3', d.cf3_sn, widths[6]]
+    for (const [title, serial, wCell] of [
+      ['Centrifuge 1', d.cf1_sn, widths[3]],
+      ['Centrifuge 2', d.cf2_sn, widths[4]],
+      ['Centrifuge 3', d.cf3_sn, widths[5]]
     ]) {
-      cell(doc, cx, y, w, h, title, { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.7 });
-      cell(doc, cx, y + h, w, h, serial, { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.6 });
-      cx += w;
+      cell(doc, cx, y, wCell, h, title, { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.75 });
+      cell(doc, cx, y + h, wCell, h, serial, { fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.65 });
+      cx += wCell;
     }
 
-    const cuttingsW = widths[7] + widths[8];
+    const cuttingsW = widths[6] + widths[7];
     cell(doc, cx, y, cuttingsW, h, 'Cuttings By-Passed (to Overboard)', {
-      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.7
+      fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.75
     });
-    cell(doc, cx, y + h, widths[7], h, `Percentage(%) : ${val(c.percentage)}`, {
-      fontSize: 4.2, align: 'left'
-    });
-    cell(doc, cx + widths[7], y + h, widths[8], h, `from depth : ${val(c.from_depth)} ${val(c.each_from_depth, '')}`, {
-      fontSize: 4.2, align: 'left'
-    });
+    cell(doc, cx, y + h, widths[6], h, `Percentage(%) : ${plain(c.percentage, '0')}`, { fontSize: 4.25, align: 'left' });
+    const fromDepth = [plain(c.from_depth), plain(c.each_from_depth)].filter(Boolean).join(' ');
+    cell(doc, cx + widths[6], y + h, widths[7], h, `from depth : ${fromDepth}`, { fontSize: 4.25, align: 'left' });
 
     y += h * 2;
   }
 
+  const toDepth = [plain(c.to_depth), plain(c.each_to_depth)].filter(Boolean).join(' ');
   y = row(doc, x, y, width, [
-    textCell('Type/Model', 19.5),
-    textCell('', 5.5),
+    textCell('Type/Model', 25, { unit: '' }),
     textCell(d.sh1_model, 9.5, { align: 'center' }),
     textCell(d.cdu1_model, 9.5, { align: 'center' }),
     textCell(d.cf1_model, 9.2, { align: 'center' }),
     textCell(d.cf2_model, 9.5, { align: 'center' }),
     textCell(d.cf3_model, 9.5, { align: 'center' }),
-    textCell(`Volume (bbls) : ${val(c.volume)}`, 13.9, { fontSize: 4.2 }),
-    textCell(`to depth : ${val(c.to_depth)} ${val(c.each_to_depth, '')}`, 13.9, { fontSize: 4.2 })
-  ], { height: 10, fontSize: 4.6 });
+    textCell(`Volume (bbls) : ${plain(c.volume, '0')}`, 13.9, { fontSize: 4.25 }),
+    textCell(`to depth : ${toDepth}`, 13.9, { fontSize: 4.25 })
+  ], { height: 10, fontSize: 4.65 });
 
-  const leftWidths = [19.5, 5.5, 9.5, 9.5, 9.2, 9.5, 9.5];
   const rowsTop = [
     ['Sample Time', '', sampleTime(r.rt_sh_sampletime), sampleTime(r.rt_cdu_sampletime), sampleTime(r.rt_cf1_sampletime), sampleTime(r.rt_cf2_sampletime), sampleTime(r.rt_cf3_sampletime)],
     ['Sample Depth', '(feet)', r.rt_sh_sampledepth, r.rt_cdu_sampledepth, r.rt_cf1_sampledepth, r.rt_cf2_sampledepth, r.rt_cf3_sampledepth],
@@ -655,8 +708,7 @@ function drawRetort(doc, data, x, y, width) {
   for (let i = 0; i < rowsTop.length; i++) {
     const rr = rowsTop[i];
     y = row(doc, x, y, width, [
-      textCell(rr[0], 19.5),
-      textCell(rr[1], 5.5, { align: 'right' }),
+      textCell(rr[0], 25, { unit: plain(rr[1]), minFontSize: 3.8 }),
       textCell(rr[2], 9.5, { align: 'center' }),
       textCell(rr[3], 9.5, { align: 'center' }),
       textCell(rr[4], 9.2, { align: 'center' }),
@@ -665,12 +717,12 @@ function drawRetort(doc, data, x, y, width) {
       ...(i === 0
         ? [greenCell('Daily Waste & Average MOC', 27.8)]
         : i === 1
-          ? [textCell(`Daily Waste Generated (Mud & Cuttings), (bbls) : ${val(w.dailywaste_generated)}`, 27.8, { fontSize: 4.2 })]
+          ? [textCell(`Daily Waste Generated (Mud & Cuttings), (bbls) : ${plain(w.dailywaste_generated)}`, 27.8, { fontSize: 4.2 })]
           : [
-              textCell(`Average MOC : ${val(w.avg_moc)}`, 13.9, { fontSize: 4.2 }),
-              textCell(`Avg Discharge %OOC : ${val(w.avg_discharge)}`, 13.9, { fontSize: 4.0 })
+              textCell(`Average MOC : ${plain(w.avg_moc)}`, 13.9, { fontSize: 4.2 }),
+              textCell(`Avg Discharge %OOC : ${plain(w.avg_discharge)}`, 13.9, { fontSize: 4.0 })
             ])
-    ], { height: 10, fontSize: 4.55 });
+    ], { height: 10, fontSize: 4.6, minFontSize: 3.8 });
   }
 
   const chartTop = y;
@@ -695,24 +747,23 @@ function drawRetort(doc, data, x, y, width) {
 
   for (const rr of retortRows) {
     y = row(doc, x, y, leftW, [
-      textCell(rr[0], 19.5 / leftPct * 100, { minFontSize: 3.75 }),
-      textCell(rr[1], 5.5 / leftPct * 100, { align: 'right' }),
+      textCell(rr[0], 25 / leftPct * 100, { unit: plain(rr[1]), minFontSize: 3.75 }),
       textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[4], 9.2 / leftPct * 100, { align: 'center' }),
       textCell(rr[5], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[6], 9.5 / leftPct * 100, { align: 'center' })
-    ], { height: chartRowH, fontSize: 4.4 });
+    ], { height: chartRowH, fontSize: 4.45, minFontSize: 3.75 });
   }
 
   const rigTop = y;
   const rigRows = 5;
   const rigH = rigRows * chartRowH;
   cell(doc, rightX, rigTop, rightW, chartRowH, 'RIG / OTHER ACTIVITIES', {
-    fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.9
+    fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.95
   });
-  cell(doc, rightX, rigTop + chartRowH, rightW, rigH - chartRowH, a.rigactivity, {
-    align: 'left', fontSize: 4.2, padX: 3, padY: 3
+  cell(doc, rightX, rigTop + chartRowH, rightW, rigH - chartRowH, plain(a.rigactivity), {
+    align: 'left', fontSize: 4.25, padX: 3, padY: 3
   });
 
   const postChartRows = [
@@ -725,89 +776,80 @@ function drawRetort(doc, data, x, y, width) {
 
   for (const rr of postChartRows) {
     y = row(doc, x, y, leftW, [
-      textCell(rr[0], 19.5 / leftPct * 100, { bold: ['Mud-on-Cuttings', 'Oil-on-Cuttings (w.m)'].includes(rr[0]), minFontSize: 3.75 }),
-      textCell(rr[1], 5.5 / leftPct * 100, { align: 'right' }),
+      textCell(rr[0], 25 / leftPct * 100, { unit: plain(rr[1]), bold: ['Mud-on-Cuttings', 'Oil-on-Cuttings (w.m)'].includes(rr[0]), minFontSize: 3.75 }),
       textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[4], 9.2 / leftPct * 100, { align: 'center' }),
       textCell(rr[5], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[6], 9.5 / leftPct * 100, { align: 'center' })
-    ], { height: chartRowH, fontSize: 4.4 });
+    ], { height: chartRowH, fontSize: 4.45, minFontSize: 3.75 });
   }
 
   const dwmTop = y;
-  const dwmRows = 5;
-  const dwmH = dwmRows * chartRowH;
-  cell(doc, rightX, dwmTop, rightW, chartRowH, 'STEP OIL TOOLS ACTIVITIES', {
-    fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.9
-  });
-  cell(doc, rightX, dwmTop + chartRowH, rightW, dwmH - chartRowH, a.bssactivity, {
-    align: 'left', fontSize: 4.2, padX: 3, padY: 3
-  });
 
   const finalRetortRows = [
-    ['Vol Oil Discharge', val(d.volholeunit), r.rt_sh_volbfoildisc, r.rt_cdu_volbfoildisc, r.rt_cf1_volbfoildisc, r.rt_cf2_volbfoildisc, r.rt_cf3_volbfoildisc],
-    ['Vol Mud Discharge', val(d.volholeunit), r.rt_sh_volmuddisc, r.rt_cdu_volmuddisc, r.rt_cf1_volmuddisc, r.rt_cf2_volmuddisc, r.rt_cf3_volmuddisc]
+    ['Vol Oil Discharge', plain(d.volholeunit), r.rt_sh_volbfoildisc, r.rt_cdu_volbfoildisc, r.rt_cf1_volbfoildisc, r.rt_cf2_volbfoildisc, r.rt_cf3_volbfoildisc],
+    ['Vol Mud Discharge', plain(d.volholeunit), r.rt_sh_volmuddisc, r.rt_cdu_volmuddisc, r.rt_cf1_volmuddisc, r.rt_cf2_volmuddisc, r.rt_cf3_volmuddisc]
   ];
 
   for (const rr of finalRetortRows) {
     y = row(doc, x, y, leftW, [
-      textCell(rr[0], 19.5 / leftPct * 100, { minFontSize: 3.75 }),
-      textCell(rr[1], 5.5 / leftPct * 100, { align: 'right' }),
+      textCell(rr[0], 25 / leftPct * 100, { unit: plain(rr[1]), minFontSize: 3.75 }),
       textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[4], 9.2 / leftPct * 100, { align: 'center' }),
       textCell(rr[5], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[6], 9.5 / leftPct * 100, { align: 'center' })
-    ], { height: chartRowH, fontSize: 4.4 });
+    ], { height: chartRowH, fontSize: 4.45, minFontSize: 3.75 });
   }
 
-  y = Math.max(y, dwmTop + dwmH);
+  const bottomLeftOil = 27;
+  const bottomLeftMud = 21;
+  const bottomLeftCum = 52;
 
-  const bottomLeftOil = 27 * leftPct / 100;
-  const bottomLeftMud = 21 * leftPct / 100;
-  const bottomLeftCum = 52 * leftPct / 100;
-
-  y = row(doc, x, y, width, [
+  y = row(doc, x, y, leftW, [
     textCell('Oil Recovered', bottomLeftOil, { align: 'center', bold: true }),
     textCell('Mud Recovered', bottomLeftMud, { align: 'center', bold: true }),
-    textCell('Cumulative Oil / Mud Recovered', bottomLeftCum, { align: 'center', bold: true }),
-    textCell('', rightPct)
-  ], { height: 9.8, fontSize: 5.0, minFontSize: 4.5 });
+    textCell('Cumulative Oil / Mud Recovered', bottomLeftCum, { align: 'center', bold: true })
+  ], { height: 9.8, fontSize: 5.0, minFontSize: 4.45 });
 
   const unit = plain(d.volholeunit);
-  const oilText = withUnit(r.oil_recovered, unit, '0') + (unit ? ' (oil)' : '');
-  const mudText = withUnit(r.mud_recovered, unit, '0') + (unit ? ' (mud)' : '');
-  const cumOilText = withUnit(r.cum_oil, unit, '-') + (unit ? ' (oil)' : '');
-  const cumMudText = withUnit(r.cum_mud, unit, '-') + (unit ? ' (mud)' : '');
+  const oilText = `${withUnit(r.oil_recovered, unit, '0')}${unit ? ' (oil)' : ''}`;
+  const mudText = `${withUnit(r.mud_recovered, unit, '0')}${unit ? ' (mud)' : ''}`;
+  const cumOilText = `${withUnit(r.cum_oil, unit, '-')}${unit ? ' (oil)' : ''}`;
+  const cumMudText = `${withUnit(r.cum_mud, unit, '-')}${unit ? ' (mud)' : ''}`;
 
-  y = row(doc, x, y, width, [
+  y = row(doc, x, y, leftW, [
     textCell(oilText, bottomLeftOil, { align: 'center' }),
     textCell(mudText, bottomLeftMud, { align: 'center' }),
-    textCell(`${cumOilText}     ${cumMudText}`, bottomLeftCum, { align: 'center' }),
-    textCell('', rightPct)
-  ], { height: 9.4, fontSize: 4.8, minFontSize: 4.35 });
+    textCell(`${cumOilText}     ${cumMudText}`, bottomLeftCum, { align: 'center' })
+  ], { height: 9.4, fontSize: 4.8, minFontSize: 4.3 });
 
-  y = row(doc, x, y, width, [
-    greenCell('Day', bottomLeftOil, { align: 'left', padX: 4 }),
-    greenCell('STEP OIL TOOLS ENGINEERS', bottomLeftMud + bottomLeftCum - 26 * leftPct / 100),
-    greenCell('Night', 26 * leftPct / 100, { align: 'right', padX: 4 }),
-    textCell('', rightPct)
-  ], { height: 9.6, fontSize: 4.95, minFontSize: 4.5 });
+  y = row(doc, x, y, leftW, [
+    greenCell('Day', 27, { align: 'left', padX: 4 }),
+    greenCell(engineerLabel, 47),
+    greenCell('Night', 26, { align: 'right', padX: 4 })
+  ], { height: 9.6, fontSize: 4.95, minFontSize: 4.25 });
 
-  y = row(doc, x, y, width, [
-    textCell(plain(p.ds1_name), leftPct / 2, { align: 'center' }),
-    textCell(plain(p.ns1_name), leftPct / 2, { align: 'center' }),
-    textCell('', rightPct)
-  ], { height: 9.4, fontSize: 4.85, minFontSize: 4.35 });
+  y = row(doc, x, y, leftW, [
+    textCell(plain(p.ds1_name), 50, { align: 'center' }),
+    textCell(plain(p.ns1_name), 50, { align: 'center' })
+  ], { height: 9.4, fontSize: 4.85, minFontSize: 4.25 });
 
-  y = row(doc, x, y, width, [
-    textCell(plain(p.ds2_name), leftPct / 2, { align: 'center' }),
-    textCell(plain(p.ns2_name), leftPct / 2, { align: 'center' }),
-    textCell('', rightPct)
-  ], { height: 9.4, fontSize: 4.85, minFontSize: 4.35 });
+  y = row(doc, x, y, leftW, [
+    textCell(plain(p.ds2_name), 50, { align: 'center' }),
+    textCell(plain(p.ns2_name), 50, { align: 'center' })
+  ], { height: 9.4, fontSize: 4.85, minFontSize: 4.25 });
 
-  return y;
+  const leftBottom = y;
+  cell(doc, rightX, dwmTop, rightW, chartRowH, activityLabel, {
+    fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.95
+  });
+  cell(doc, rightX, dwmTop + chartRowH, rightW, Math.max(chartRowH, leftBottom - dwmTop - chartRowH), plain(a.bssactivity), {
+    align: 'left', fontSize: 4.25, padX: 3, padY: 3
+  });
+
+  return Math.max(leftBottom, dwmTop + chartRowH * 2);
 }
 
 function footer(doc) {
@@ -835,6 +877,12 @@ function footer(doc) {
 }
 
 export function pipeDailyReportPdf(res, data) {
+  const reportSettings = getReportSettings();
+  GREEN = /^#[0-9a-fA-F]{6}$/.test(reportSettings.pdf_accent_color || '')
+    ? reportSettings.pdf_accent_color.toUpperCase()
+    : '#267544';
+  const renderData = { ...data, reportSettings };
+
   const doc = new PDFDocument({
     size: PAGE.size,
     layout: PAGE.layout,
@@ -847,7 +895,7 @@ export function pipeDailyReportPdf(res, data) {
     compress: true,
     bufferPages: true,
     info: {
-      Title: `DWM Daily Report ${formatReportNumber(data.report.urut, data.report.id_wellinfo)}`,
+      Title: `DWM Daily Report ${formatReportNumber(renderData.report.urut, renderData.report.id_wellinfo)}`,
       Author: 'DWM'
     }
   });
@@ -866,11 +914,11 @@ export function pipeDailyReportPdf(res, data) {
     .restore();
 
   let y = 15;
-  y = drawHeader(doc, data, x, y, width);
-  y = drawWellInfo(doc, data, x, y, width);
-  y = drawActiveMud(doc, data, x, y, width);
-  y = drawEquipment(doc, data, x, y, width);
-  y = drawRetort(doc, data, x, y, width);
+  y = drawHeader(doc, renderData, x, y, width);
+  y = drawWellInfo(doc, renderData, x, y, width);
+  y = drawActiveMud(doc, renderData, x, y, width);
+  y = drawEquipment(doc, renderData, x, y, width);
+  y = drawRetort(doc, renderData, x, y, width);
 
   footer(doc);
 

@@ -279,3 +279,14 @@ DWM now includes final migration and production-readiness tooling: notifications
 - Corrected double-padding calculation in PDF text fitting.
 - Labels now shrink only as needed while preserving the complete text.
 - Added regression guard so automatic cell ellipsis cannot be reintroduced silently.
+
+## v0.8.4
+
+- Full downstream report formula recalculation after upstream saves.
+- Manual formula recalculation for legacy/imported reports.
+- Compact Shaker, Personnel and By-Passed input layouts restored.
+- PDF accent color is configurable.
+- PDF Engineer and Company Activity section names are configurable.
+- Retort/Centrifuge units are rendered inside the parameter cell without a separate unit grid column.
+- Recovery and Engineer rows align directly beside the Company Activities block.
+- `npm run cleanup:release` removes old root ZIP release artifacts and obsolete v0.6.2/v0.7 deployment notes.

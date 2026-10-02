@@ -8,6 +8,7 @@ import {
 } from '../services/report-calculations.js';
 import { deleteReportTree } from '../services/relational-cleanup.service.js';
 import { nextReportDate, nextReportNumber, formatReportNumber } from '../services/report-sequence.js';
+import { recalculateReportDerivedFields } from '../services/report-recalculation.service.js';
 
 const REPORT_TABLES = [
   'details',
@@ -121,7 +122,7 @@ const SECTION_DEFS = {
       ...[1, 2, 3, 4, 5, 6].map(n => ({
         title: `Shaker ${n}`,
         fields: [
-          field(`sh${n}_name`, 'Name'),
+          field(`sh${n}_name`, 'Name', 'text', { readonly: true }),
           field(`sh${n}_model`, 'Model'),
           field(`sh${n}_screensize`, 'Screen size'),
           field(`sh${n}_runninghour`, 'Running hour', 'number')
@@ -146,11 +147,11 @@ const SECTION_DEFS = {
     groups: [{
       title: 'Cuttings by-passed',
       fields: [
-        field('percentage', 'Percentage', 'number'),
-        field('volume', 'Volume', 'number'),
-        field('from_depth', 'From depth', 'number'),
+        field('percentage', 'Percentage', 'number', { min: '0', max: '100' }),
+        field('volume', 'Volume', 'number', { min: '0' }),
+        field('from_depth', 'From depth', 'number', { min: '0' }),
         field('each_from_depth', 'From depth unit', 'select', { options: ['Metre', 'Feet'] }),
-        field('to_depth', 'To depth', 'number'),
+        field('to_depth', 'To depth', 'number', { min: '0' }),
         field('each_to_depth', 'To depth unit', 'select', { options: ['Metre', 'Feet'] })
       ]
     }]
@@ -383,6 +384,9 @@ function normalizeValue(raw, meta) {
     if (!Number.isFinite(value)) throw new InputError(`${meta.label} must be a number.`);
     if (meta.min !== undefined && value < Number(meta.min)) {
       throw new InputError(`${meta.label} must be at least ${meta.min}.`);
+    }
+    if (meta.max !== undefined && value > Number(meta.max)) {
+      throw new InputError(`${meta.label} must be at most ${meta.max}.`);
     }
     if (meta.name === 'urut') {
       if (!Number.isInteger(value)) throw new InputError('Report number must be a whole number.');
@@ -631,6 +635,13 @@ export function saveReportSection(req, res, next) {
       updateRow(section.table, 'id_wellinfo = ?', [wellId], flattenFields(section), calculatedBody);
     });
 
+    if (new Set([
+      'well', 'amp', 'centrifuge1', 'centrifuge2', 'centrifuge3',
+      'desander', 'desilter', 'retort'
+    ]).has(sectionId)) {
+      recalculateReportDerivedFields(wellId);
+    }
+
     res.redirect(
       `/projects/${projectId}/reports/${wellId}/edit?section=${encodeURIComponent(sectionId)}` +
       '&notice=' + encodeURIComponent(`${section.label} saved.`)
@@ -656,6 +667,33 @@ export function saveReportSection(req, res, next) {
         notice: '',
         error: error.message
       });
+    }
+    next(error);
+  }
+}
+
+export function recalculateReport(req, res, next) {
+  try {
+    const projectId = Number(req.params.projectId);
+    const wellId = Number(req.params.wellId);
+    const context = getContext(projectId, wellId);
+
+    if (!context) {
+      return res.status(404).render('errors/404', { title: 'Report not found' });
+    }
+
+    if (context.report.lockreport === 'YES') {
+      throw new InputError('This report is locked. Unlock it before recalculating formulas.', 423);
+    }
+
+    recalculateReportDerivedFields(wellId);
+    res.redirect(
+      `/projects/${projectId}/reports/${wellId}?notice=` +
+      encodeURIComponent('All derived report formulas recalculated.')
+    );
+  } catch (error) {
+    if (error instanceof InputError) {
+      return res.status(error.status).send(error.message);
     }
     next(error);
   }
@@ -808,6 +846,8 @@ export function copyReport(req, res, next) {
 
       return targetWellId;
     });
+
+    recalculateReportDerivedFields(newWellId);
 
     res.redirect(
       `/projects/${projectId}/reports/${newWellId}/edit?section=report&notice=` +
