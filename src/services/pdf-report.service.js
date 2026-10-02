@@ -90,28 +90,25 @@ function pctWidths(totalWidth, percentages) {
 function fitText(doc, text, width, height, options = {}) {
   const font = options.bold ? 'Helvetica-Bold' : 'Helvetica';
   let size = options.fontSize || 5.35;
-  const min = options.minFontSize || 4.1;
-  let content = val(text, options.fallback ?? '-');
+  const min = options.minFontSize || 3.6;
+  const content = val(text, options.fallback ?? '-');
+  const availableWidth = Math.max(1, width);
+  const availableHeight = Math.max(1, height);
 
   const fits = () => {
     doc.font(font).fontSize(size);
-    return doc.heightOfString(content, {
-      width: Math.max(1, width - 4),
+    const measuredHeight = doc.heightOfString(content, {
+      width: availableWidth,
       align: options.align || 'left',
       lineGap: 0
-    }) <= height - 2;
+    });
+    return measuredHeight <= availableHeight + 0.15;
   };
 
+  // The caller already removes cell padding before reaching this function.
+  // Do not subtract padding again; doing so caused labels to become S… / B… / M….
   while (size > min && !fits()) {
-    size -= 0.2;
-  }
-
-  if (!fits()) {
-    let trimmed = content;
-    while (trimmed.length > 1 && !fits()) {
-      trimmed = trimmed.slice(0, -1).trimEnd();
-      content = `${trimmed}…`;
-    }
+    size = Math.max(min, size - 0.15);
   }
 
   doc.font(font).fontSize(size);
@@ -133,11 +130,15 @@ function cell(doc, x, y, width, height, text, options = {}) {
   }
 
   const padX = options.padX ?? 2;
-  const padY = options.padY ?? 1.5;
-  const content = fitText(doc, text, width - padX * 2, height - padY * 2, options);
+  const padY = options.padY ?? 1.25;
+  const availableWidth = Math.max(1, width - padX * 2);
+  const availableHeight = Math.max(1, height - padY * 2);
+  const content = fitText(doc, text, availableWidth, availableHeight, options);
 
+  // Clip strictly to the current cell, but never auto-ellipsize labels/values.
+  // fitText reduces the font size until the complete text fits the row.
   doc.save();
-  doc.rect(x + 0.3, y + 0.3, Math.max(0.5, width - 0.6), Math.max(0.5, height - 0.6)).clip();
+  doc.rect(x + 0.25, y + 0.25, Math.max(0.5, width - 0.5), Math.max(0.5, height - 0.5)).clip();
   doc.fillColor(options.color || BLACK)
     .font(options.bold ? 'Helvetica-Bold' : 'Helvetica')
     .text(
@@ -145,11 +146,11 @@ function cell(doc, x, y, width, height, text, options = {}) {
       x + padX,
       y + padY,
       {
-        width: Math.max(1, width - padX * 2),
-        height: Math.max(1, height - padY * 2),
+        width: availableWidth,
+        height: availableHeight,
         align: options.align || 'left',
         lineGap: 0,
-        ellipsis: options.ellipsis !== false
+        ellipsis: false
       }
     );
   doc.restore();
@@ -434,7 +435,7 @@ function drawEquipment(doc, data, x, y, width) {
 
   for (const r of shakerRows) {
     y = row(doc, x, y, width, [
-      textCell(r[0], 19, { bold: false }),
+      textCell(r[0], 19, { bold: false, minFontSize: 3.8 }),
       textCell(r[1], 5, { align: 'right' }),
       textCell(r[2], 9, { align: 'center' }),
       textCell(r[3], 9.5, { align: 'center' }),
@@ -480,8 +481,8 @@ function drawEquipment(doc, data, x, y, width) {
 
   for (const r of combined) {
     y = row(doc, x, y, width, [
-      textCell(r[0], 19),
-      textCell(r[1], 5, { align: 'right' }),
+      textCell(r[0], 19, { minFontSize: 3.8 }),
+      textCell(r[1], 5, { align: 'right', minFontSize: 3.7 }),
       textCell(r[2], 9, { align: 'center' }),
       textCell(r[3], 9.5, { align: 'center' }),
       textCell(r[4], 10, { align: 'center' }),
@@ -694,7 +695,7 @@ function drawRetort(doc, data, x, y, width) {
 
   for (const rr of retortRows) {
     y = row(doc, x, y, leftW, [
-      textCell(rr[0], 19.5 / leftPct * 100),
+      textCell(rr[0], 19.5 / leftPct * 100, { minFontSize: 3.75 }),
       textCell(rr[1], 5.5 / leftPct * 100, { align: 'right' }),
       textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
@@ -724,7 +725,7 @@ function drawRetort(doc, data, x, y, width) {
 
   for (const rr of postChartRows) {
     y = row(doc, x, y, leftW, [
-      textCell(rr[0], 19.5 / leftPct * 100, { bold: ['Mud-on-Cuttings', 'Oil-on-Cuttings (w.m)'].includes(rr[0]) }),
+      textCell(rr[0], 19.5 / leftPct * 100, { bold: ['Mud-on-Cuttings', 'Oil-on-Cuttings (w.m)'].includes(rr[0]), minFontSize: 3.75 }),
       textCell(rr[1], 5.5 / leftPct * 100, { align: 'right' }),
       textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
@@ -751,7 +752,7 @@ function drawRetort(doc, data, x, y, width) {
 
   for (const rr of finalRetortRows) {
     y = row(doc, x, y, leftW, [
-      textCell(rr[0], 19.5 / leftPct * 100),
+      textCell(rr[0], 19.5 / leftPct * 100, { minFontSize: 3.75 }),
       textCell(rr[1], 5.5 / leftPct * 100, { align: 'right' }),
       textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
       textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),

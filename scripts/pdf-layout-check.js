@@ -5,6 +5,14 @@ import { PassThrough } from 'node:stream';
 import { pipeDailyReportPdf } from '../src/services/pdf-report.service.js';
 
 const output = path.join(os.tmpdir(), `dwm-pdf-check-${process.pid}.pdf`);
+
+const rendererSource = fs.readFileSync(new URL('../src/services/pdf-report.service.js', import.meta.url), 'utf8');
+if (/ellipsis:\s*options\.ellipsis\s*!==\s*false/.test(rendererSource)) {
+  throw new Error('PDF renderer still enables automatic cell ellipsis.');
+}
+if (!/ellipsis:\s*false/.test(rendererSource)) {
+  throw new Error('PDF renderer must explicitly disable automatic cell ellipsis.');
+}
 const chunks = [];
 const stream = new PassThrough();
 stream.on('data', chunk => chunks.push(chunk));

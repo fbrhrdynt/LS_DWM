@@ -1,6 +1,6 @@
 {
   "name": "dwm",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "private": true,
   "type": "module",
   "description": "DWM - lightweight Node.js rewrite of the legacy Laravel application",
