@@ -14,13 +14,11 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import projectRoutes from './routes/project.routes.js';
 import accountRoutes from './routes/account.routes.js';
 import reportRoutes from './routes/report.routes.js';
-import assetMaintenanceRoutes from './routes/asset-maintenance.routes.js';
+import assetRoutes from './routes/asset.routes.js';
 import exportRoutes from './routes/export.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
 import auditRoutes from './routes/audit.routes.js';
 import { auditMutations } from './middleware/audit.js';
-import { loadNotificationSummary } from './middleware/notifications.js';
-import notificationRoutes from './routes/notification.routes.js';
 import systemRoutes from './routes/system.routes.js';
 import legacyCompatRoutes from './routes/legacy-compat.routes.js';
 import { formatReportNumber } from './services/report-sequence.js';
@@ -29,7 +27,7 @@ import { pingDatabase } from './config/db.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const APP_VERSION = '0.8.6.2';
+const APP_VERSION = '0.9.1';
 
 const app = express();
 
@@ -98,7 +96,6 @@ app.use(cookieSession({
 }));
 
 app.use(loadUser);
-app.use(loadNotificationSummary);
 app.use(csrfToken);
 app.use(auditMutations);
 
@@ -139,11 +136,10 @@ app.use(dashboardRoutes);
 app.use(projectRoutes);
 app.use(accountRoutes);
 app.use(reportRoutes);
-app.use(assetMaintenanceRoutes);
+app.use(assetRoutes);
 app.use(exportRoutes);
 app.use(settingsRoutes);
 app.use(auditRoutes);
-app.use(notificationRoutes);
 app.use(systemRoutes);
 app.use(legacyCompatRoutes);
 

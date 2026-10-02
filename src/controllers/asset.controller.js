@@ -1,69 +1,34 @@
-import { all, get, run, transaction } from '../config/db.js';
-import {
-  deleteStoredUpload,
-  fileExists,
-  relativeUploadPath,
-  removeUploadedRequestFile,
-  resolveStoredUpload
-} from '../services/file-storage.js';
-import { dueState, todayInTimeZone } from '../services/maintenance-calculations.js';
+import { all, get, run, tableExists, transaction } from '../config/db.js';
+import { deleteStoredUpload } from '../services/file-storage.js';
 
 const MANAGERS = new Set(['MASTER', 'Supervisor']);
+function clean(value, max = 255) { return String(value ?? '').trim().slice(0, max); }
+function canManage(user) { return MANAGERS.has(user?.level); }
 
-function clean(value, max = 255) {
-  return String(value ?? '').trim().slice(0, max);
+function accessibleProjects(user) {
+  if (canManage(user)) {
+    return all(`SELECT id_project, contract, operator_name, drillingrig, wellname
+                FROM projects ORDER BY operator_name COLLATE NOCASE, id_project DESC`);
+  }
+  return all(`SELECT id_project, contract, operator_name, drillingrig, wellname
+              FROM projects WHERE id_project = ? LIMIT 1`, [user.id_project]);
 }
 
-function canManage(user) {
-  return MANAGERS.has(user?.level);
+function generalCategoryId() {
+  let row = get(`SELECT id FROM pm_categories WHERE lower(name) = 'general' LIMIT 1`);
+  if (row) return Number(row.id);
+  const result = run(
+    `INSERT INTO pm_categories (name, notes, created_at, updated_at)
+     VALUES ('General', 'Internal compatibility category for simplified DWM Assets.', datetime('now'), datetime('now'))`
+  );
+  return Number(result.lastInsertRowid);
 }
 
-function requireCategory(id) {
-  const categoryId = Number(id);
-  if (!Number.isInteger(categoryId) || categoryId < 1) throw new Error('Asset category is required.');
-  const category = get('SELECT id, name FROM pm_categories WHERE id = ? LIMIT 1', [categoryId]);
-  if (!category) throw new Error('Selected asset category was not found.');
-  return categoryId;
-}
-
-function assetCategories() {
-  return all('SELECT id, name, notes FROM pm_categories ORDER BY name COLLATE NOCASE');
-}
-
-function inspectionCategories() {
-  return all('SELECT id_inspection, name_inspection, notes FROM inspection_category ORDER BY name_inspection COLLATE NOCASE');
-}
-
-function maintenanceCategories() {
-  return all('SELECT id, pm_name, frequency, frequency_unit, notes FROM pm_detail_category ORDER BY pm_name COLLATE NOCASE');
-}
-
-function assetRows() {
-  return all(`
-    SELECT
-      a.id,
-      a.id_pm_category,
-      a.asset_name,
-      a.mfg_sn,
-      a.company_asset,
-      a.coc,
-      a.status,
-      a.notes,
-      c.name AS category_name,
-      (SELECT MIN(pm.pm_due) FROM pm_details pm
-       WHERE pm.id_asset_list = a.id AND COALESCE(pm.pm_status, '') NOT IN ('Completed', 'Cancelled')) AS next_pm_due,
-      (SELECT MIN(i.inspection_exp) FROM inspection_detail i
-       WHERE i.id_asset_list = a.id) AS next_inspection_due,
-      (SELECT COUNT(*) FROM pm_details pm WHERE pm.id_asset_list = a.id) AS pm_count,
-      (SELECT COUNT(*) FROM inspection_detail i WHERE i.id_asset_list = a.id) AS inspection_count
-    FROM assets_list a
-    LEFT JOIN pm_categories c ON c.id = a.id_pm_category
-    ORDER BY a.asset_name COLLATE NOCASE, a.company_asset COLLATE NOCASE
-  `).map(row => ({
-    ...row,
-    pmDueState: dueState(row.next_pm_due),
-    inspectionDueState: dueState(row.next_inspection_due)
-  }));
+function requireProject(raw) {
+  const projectId = Number(raw);
+  if (!Number.isInteger(projectId) || projectId < 1) throw new Error('Assign the asset to a project / job.');
+  if (!get('SELECT 1 FROM projects WHERE id_project = ? LIMIT 1', [projectId])) throw new Error('Selected project was not found.');
+  return projectId;
 }
 
 function validateAsset(body) {
@@ -72,55 +37,51 @@ function validateAsset(body) {
   const mfgSn = clean(body.mfg_sn);
   const status = clean(body.status, 50) || 'Active';
   const notes = clean(body.notes, 4000);
-  const categoryId = requireCategory(body.id_pm_category);
-
+  const projectId = requireProject(body.id_project);
   if (!assetName) throw new Error('Asset name is required.');
-  if (!companyAsset) throw new Error('Company asset number is required.');
+  if (!companyAsset) throw new Error('Asset number is required.');
   if (!mfgSn) throw new Error('Manufacturer serial number is required.');
+  return { assetName, companyAsset, mfgSn, status, notes, projectId };
+}
 
-  return { assetName, companyAsset, mfgSn, status, notes, categoryId };
+function assetRows(user) {
+  const where = canManage(user) ? '' : 'WHERE a.id_project = ?';
+  const params = canManage(user) ? [] : [Number(user.id_project)];
+  return all(`
+    SELECT a.id, a.id_project, a.asset_name, a.mfg_sn, a.company_asset, a.status, a.notes,
+           p.contract, p.operator_name, p.drillingrig, p.wellname
+    FROM assets_list a
+    LEFT JOIN projects p ON p.id_project = a.id_project
+    ${where}
+    ORDER BY p.operator_name COLLATE NOCASE, a.asset_name COLLATE NOCASE, a.company_asset COLLATE NOCASE
+  `, params);
 }
 
 export function assetsIndex(req, res, next) {
   try {
     res.render('assets/index', {
-      title: 'Assets',
-      assets: assetRows(),
-      categories: assetCategories(),
-      canManage: canManage(req.user),
-      notice: clean(req.query.notice, 300),
-      error: null,
-      values: {}
+      title: 'Assets', assets: assetRows(req.user), projects: accessibleProjects(req.user),
+      canManage: canManage(req.user), notice: clean(req.query.notice, 300), error: null, values: {}
     });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 }
 
 export function createAsset(req, res, next) {
   try {
     const input = validateAsset(req.body);
-    const coc = relativeUploadPath(req.file);
-
+    const categoryId = generalCategoryId();
     run(
       `INSERT INTO assets_list
-       (id_pm_category, asset_name, mfg_sn, company_asset, coc, status, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-      [input.categoryId, input.assetName, input.mfgSn, input.companyAsset, coc, input.status, input.notes || null]
+       (id_pm_category, id_project, asset_name, mfg_sn, company_asset, coc, status, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, NULL, ?, ?, datetime('now'), datetime('now'))`,
+      [categoryId, input.projectId, input.assetName, input.mfgSn, input.companyAsset, input.status, input.notes || null]
     );
-
-    res.redirect('/assets?notice=' + encodeURIComponent('Asset created successfully.'));
+    res.redirect('/assets?notice=' + encodeURIComponent('Asset created and assigned to project.'));
   } catch (error) {
-    removeUploadedRequestFile(req);
     if (error instanceof Error && !String(error.message).includes('SQLITE')) {
       return res.status(422).render('assets/index', {
-        title: 'Assets',
-        assets: assetRows(),
-        categories: assetCategories(),
-        canManage: canManage(req.user),
-        notice: '',
-        error: error.message,
-        values: req.body
+        title: 'Assets', assets: assetRows(req.user), projects: accessibleProjects(req.user),
+        canManage: canManage(req.user), notice: '', error: error.message, values: req.body
       });
     }
     next(error);
@@ -131,77 +92,34 @@ export function assetDetail(req, res, next) {
   try {
     const assetId = Number(req.params.assetId);
     const asset = get(`
-      SELECT a.*, c.name AS category_name
+      SELECT a.id, a.id_project, a.asset_name, a.mfg_sn, a.company_asset, a.status, a.notes,
+             p.contract, p.operator_name, p.drillingrig, p.wellname
       FROM assets_list a
-      LEFT JOIN pm_categories c ON c.id = a.id_pm_category
-      WHERE a.id = ? LIMIT 1
-    `, [assetId]);
-
+      LEFT JOIN projects p ON p.id_project = a.id_project
+      WHERE a.id = ? LIMIT 1`, [assetId]);
     if (!asset) return res.status(404).render('errors/404', { title: 'Asset not found' });
-    asset.cocExists = fileExists(asset.coc);
-
-    const inspections = all(`
-      SELECT i.*, c.name_inspection
-      FROM inspection_detail i
-      LEFT JOIN inspection_category c ON c.id_inspection = i.id_inspection
-      WHERE i.id_asset_list = ?
-      ORDER BY i.inspection_exp ASC, i.id DESC
-    `, [assetId]).map(row => ({ ...row, dueState: dueState(row.inspection_exp), hasFile: fileExists(row.cert) }));
-
-    const maintenance = all(`
-      SELECT pm.*, c.pm_name, c.frequency, c.frequency_unit
-      FROM pm_details pm
-      LEFT JOIN pm_detail_category c ON c.id = pm.id_pm_detail_category
-      WHERE pm.id_asset_list = ?
-      ORDER BY pm.pm_due ASC, pm.id DESC
-    `, [assetId]).map(row => ({
-      ...row,
-      dueState: dueState(row.pm_due, { completed: row.pm_status === 'Completed' })
-    }));
-
     res.render('assets/detail', {
-      title: asset.asset_name || 'Asset',
-      asset,
-      categories: assetCategories(),
-      inspectionCategories: inspectionCategories(),
-      maintenanceCategories: maintenanceCategories(),
-      inspections,
-      maintenance,
-      canManage: canManage(req.user),
-      notice: clean(req.query.notice, 300),
-      today: todayInTimeZone()
+      title: asset.asset_name || 'Asset', asset, projects: accessibleProjects(req.user),
+      canManage: canManage(req.user), notice: clean(req.query.notice, 300), error: null
     });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 }
 
 export function updateAsset(req, res, next) {
   try {
     const assetId = Number(req.params.assetId);
-    const current = get('SELECT * FROM assets_list WHERE id = ? LIMIT 1', [assetId]);
-    if (!current) {
-      removeUploadedRequestFile(req);
+    if (!get('SELECT 1 FROM assets_list WHERE id = ? LIMIT 1', [assetId])) {
       return res.status(404).render('errors/404', { title: 'Asset not found' });
     }
-
     const input = validateAsset(req.body);
-    const newCoc = relativeUploadPath(req.file);
-    const coc = newCoc || current.coc || null;
-
     run(
       `UPDATE assets_list
-       SET id_pm_category = ?, asset_name = ?, mfg_sn = ?, company_asset = ?, coc = ?, status = ?, notes = ?, updated_at = datetime('now')
+       SET id_project = ?, asset_name = ?, mfg_sn = ?, company_asset = ?, status = ?, notes = ?, updated_at = datetime('now')
        WHERE id = ?`,
-      [input.categoryId, input.assetName, input.mfgSn, input.companyAsset, coc, input.status, input.notes || null, assetId]
+      [input.projectId, input.assetName, input.mfgSn, input.companyAsset, input.status, input.notes || null, assetId]
     );
-
-    if (newCoc && current.coc && current.coc !== newCoc) deleteStoredUpload(current.coc);
-    res.redirect(`/assets/${assetId}?notice=` + encodeURIComponent('Asset updated successfully.'));
-  } catch (error) {
-    removeUploadedRequestFile(req);
-    next(error);
-  }
+    res.redirect(`/assets/${assetId}?notice=` + encodeURIComponent('Asset updated.'));
+  } catch (error) { next(error); }
 }
 
 export function deleteAsset(req, res, next) {
@@ -210,55 +128,34 @@ export function deleteAsset(req, res, next) {
     const asset = get('SELECT id, coc FROM assets_list WHERE id = ? LIMIT 1', [assetId]);
     if (!asset) return res.status(404).render('errors/404', { title: 'Asset not found' });
 
-    const inspectionFiles = all(
-      'SELECT cert FROM inspection_detail WHERE id_asset_list = ? AND cert IS NOT NULL',
-      [assetId]
-    ).map(row => row.cert);
+    const certs = tableExists('inspection_detail')
+      ? all('SELECT cert FROM inspection_detail WHERE id_asset_list = ? AND cert IS NOT NULL', [assetId]).map(row => row.cert)
+      : [];
 
     transaction(() => {
-      run('DELETE FROM inspection_detail WHERE id_asset_list = ?', [assetId]);
-      run('DELETE FROM pm_details WHERE id_asset_list = ?', [assetId]);
+      // Retired Maintenance/Inspection records are removed only as legacy child data
+      // so they cannot block deletion of the simplified Asset record.
+      if (tableExists('inspection_detail')) run('DELETE FROM inspection_detail WHERE id_asset_list = ?', [assetId]);
+      if (tableExists('pm_details')) run('DELETE FROM pm_details WHERE id_asset_list = ?', [assetId]);
       run('DELETE FROM assets_list WHERE id = ?', [assetId]);
     });
 
-    deleteStoredUpload(asset.coc);
-    inspectionFiles.forEach(deleteStoredUpload);
-
-    res.redirect('/assets?notice=' + encodeURIComponent('Asset and related records deleted.'));
-  } catch (error) {
-    next(error);
-  }
-}
-
-export function downloadCoc(req, res, next) {
-  try {
-    const assetId = Number(req.params.assetId);
-    const asset = get('SELECT company_asset, coc FROM assets_list WHERE id = ? LIMIT 1', [assetId]);
-    if (!asset?.coc) return res.status(404).render('errors/404', { title: 'COC not found' });
-    const absolute = resolveStoredUpload(asset.coc);
-    if (!absolute || !fileExists(asset.coc)) {
-      return res.status(404).render('errors/404', { title: 'COC file not found' });
-    }
-    res.download(absolute);
-  } catch (error) {
-    next(error);
-  }
+    if (asset.coc) deleteStoredUpload(asset.coc);
+    certs.forEach(deleteStoredUpload);
+    res.redirect('/assets?notice=' + encodeURIComponent('Asset deleted.'));
+  } catch (error) { next(error); }
 }
 
 export function assetSelectApi(req, res, next) {
   try {
     const q = clean(req.query.q, 100);
-    const term = `%${q}%`;
-    const rows = q
-      ? all(
-          `SELECT id, asset_name, company_asset FROM assets_list
-           WHERE asset_name LIKE ? OR company_asset LIKE ?
-           ORDER BY asset_name COLLATE NOCASE LIMIT 10`,
-          [term, term]
-        )
-      : all('SELECT id, asset_name, company_asset FROM assets_list ORDER BY asset_name COLLATE NOCASE LIMIT 10');
-    res.json(rows);
-  } catch (error) {
-    next(error);
-  }
+    const scoped = !canManage(req.user);
+    const sql = `SELECT a.id, a.asset_name, a.company_asset, a.id_project
+                 FROM assets_list a
+                 WHERE (a.asset_name LIKE ? OR a.company_asset LIKE ?)
+                 ${scoped ? 'AND a.id_project = ?' : ''}
+                 ORDER BY a.asset_name COLLATE NOCASE LIMIT 20`;
+    const params = [`%${q}%`, `%${q}%`, ...(scoped ? [Number(req.user.id_project)] : [])];
+    res.json(all(sql, params));
+  } catch (error) { next(error); }
 }

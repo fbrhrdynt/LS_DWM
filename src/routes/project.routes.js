@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
-import { requireProjectAccess, requireRole, requireWellBelongsToProject } from '../middleware/access.js';
+import { requireProjectAccess, requireReportOpenAccess, requireRole, requireWellBelongsToProject } from '../middleware/access.js';
 import { verifyMultipartCsrf } from '../middleware/csrf.js';
 import { uploadProjectLogo } from '../services/file-storage.js';
 import {
@@ -36,6 +36,7 @@ router.get(
   requireAuth,
   requireProjectAccess,
   requireWellBelongsToProject,
+  requireReportOpenAccess,
   reportDetail
 );
 

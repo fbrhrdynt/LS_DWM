@@ -11,6 +11,7 @@ import { nextReportDate, nextReportNumber, formatReportNumber } from '../service
 import { recalculateReportDerivedFields } from '../services/report-recalculation.service.js';
 import { getReportSettings } from '../services/report-settings.service.js';
 import { FLUID_TYPE_OPTIONS, activeMudCategoryMeta } from '../services/fluid-category.service.js';
+import { isReportManager, markReportSaved, reopenReport, validateReport, workflowForNewReport } from '../services/report-workflow.service.js';
 
 const REPORT_TABLES = [
   'details',
@@ -387,7 +388,7 @@ function tableColumns(table) {
 
 function getContext(projectId, wellId) {
   const project = get(
-    `SELECT id_project, contract, operator_name, drillingrig, wellname, kodeakses
+    `SELECT id_project, contract, operator_name, drillingrig, wellname
      FROM projects WHERE id_project = ? LIMIT 1`,
     [projectId]
   );
@@ -599,6 +600,8 @@ export function reportEditor(req, res, next) {
       calcContext: calculationContext(wellId),
       activeMudMeta: activeMudCategoryMeta(data),
       reportSettings: getReportSettings(),
+      canEdit: isReportManager(req.user) || String(context.report.validation_status || 'DRAFT') !== 'VALIDATED',
+      isManager: isReportManager(req.user),
       notice: String(req.query.notice || '').slice(0, 300),
       error: null
     });
@@ -619,8 +622,8 @@ export function saveReportSection(req, res, next) {
       return res.status(404).render('errors/404', { title: 'Report section not found' });
     }
 
-    if (context.report.lockreport === 'YES') {
-      throw new InputError('This report is locked. Unlock it before making changes.', 423);
+    if (!isReportManager(req.user) && String(context.report.validation_status || 'DRAFT') === 'VALIDATED') {
+      throw new InputError('This report is validated. A Supervisor or Admin must re-open it before an Operator can edit it.', 423);
     }
 
     const calculatedBody = applySectionCalculations(sectionId, wellId, req.body);
@@ -682,9 +685,11 @@ export function saveReportSection(req, res, next) {
       recalculateReportDerivedFields(wellId);
     }
 
+    const workflowState = markReportSaved(wellId, req.user);
+
     res.redirect(
       `/projects/${projectId}/reports/${wellId}/edit?section=${encodeURIComponent(sectionId)}` +
-      '&notice=' + encodeURIComponent(`${section.label} saved.`)
+      '&notice=' + encodeURIComponent(`${section.label} saved. ${workflowState === 'PENDING' ? 'Saved. Editing remains open until Supervisor/Admin validates for handover.' : 'Validated automatically.'}`)
     );
   } catch (error) {
     if (error instanceof InputError) {
@@ -706,6 +711,8 @@ export function saveReportSection(req, res, next) {
         calcContext: calculationContext(wellId),
         activeMudMeta: activeMudCategoryMeta({ ...calculationContext(wellId).details, ...req.body }),
         reportSettings: getReportSettings(),
+        canEdit: isReportManager(req.user) || String(context.report.validation_status || 'DRAFT') !== 'VALIDATED',
+        isManager: isReportManager(req.user),
         notice: '',
         error: error.message
       });
@@ -724,14 +731,15 @@ export function recalculateReport(req, res, next) {
       return res.status(404).render('errors/404', { title: 'Report not found' });
     }
 
-    if (context.report.lockreport === 'YES') {
-      throw new InputError('This report is locked. Unlock it before recalculating formulas.', 423);
+    if (!isReportManager(req.user) && String(context.report.validation_status || 'DRAFT') === 'VALIDATED') {
+      throw new InputError('This report is validated. A Supervisor or Admin must re-open it before recalculation.', 423);
     }
 
     recalculateReportDerivedFields(wellId);
+    const workflowState = markReportSaved(wellId, req.user);
     res.redirect(
       `/projects/${projectId}/reports/${wellId}?notice=` +
-      encodeURIComponent('All derived report formulas recalculated.')
+      encodeURIComponent(`All derived report formulas recalculated. ${workflowState === 'PENDING' ? 'Saved. Editing remains open until Supervisor/Admin validates for handover.' : 'Validated automatically.'}`)
     );
   } catch (error) {
     if (error instanceof InputError) {
@@ -741,57 +749,6 @@ export function recalculateReport(req, res, next) {
   }
 }
 
-export function lockReport(req, res, next) {
-  try {
-    const projectId = Number(req.params.projectId);
-    const wellId = Number(req.params.wellId);
-    const context = getContext(projectId, wellId);
-    if (!context) {
-      return res.status(404).render('errors/404', { title: 'Report not found' });
-    }
-
-    run(
-      `UPDATE wellinfo SET lockreport = 'YES', updated_at = datetime('now')
-       WHERE id_wellinfo = ? AND id_project = ?`,
-      [wellId, projectId]
-    );
-
-    res.redirect(`/projects/${projectId}/reports/${wellId}?notice=` + encodeURIComponent('Report locked.'));
-  } catch (error) {
-    next(error);
-  }
-}
-
-export function unlockReport(req, res, next) {
-  try {
-    const projectId = Number(req.params.projectId);
-    const wellId = Number(req.params.wellId);
-    const context = getContext(projectId, wellId);
-    if (!context) {
-      return res.status(404).render('errors/404', { title: 'Report not found' });
-    }
-
-    const supplied = String(req.body.kodeakses || '').trim();
-    const expected = String(context.project.kodeakses ?? '').trim();
-    if (!supplied || supplied !== expected) {
-      return res.status(403).render('reports/unlock-error', {
-        title: 'Unlock failed',
-        project: context.project,
-        report: context.report
-      });
-    }
-
-    run(
-      `UPDATE wellinfo SET lockreport = 'NO', updated_at = datetime('now')
-       WHERE id_wellinfo = ? AND id_project = ?`,
-      [wellId, projectId]
-    );
-
-    res.redirect(`/projects/${projectId}/reports/${wellId}?notice=` + encodeURIComponent('Report unlocked.'));
-  } catch (error) {
-    next(error);
-  }
-}
 
 function cloneWellChild(table, sourceWellId, targetWellId) {
   const columns = all(`PRAGMA table_info(${quoteIdentifier(table)})`);
@@ -836,68 +793,99 @@ function cloneWellChild(table, sourceWellId, targetWellId) {
   );
 }
 
+function createReportFromSource(projectId, sourceReport, sourceWellId, user) {
+  return transaction(() => {
+    const projectMax = Number(get(
+      `SELECT COALESCE(MAX(CAST(urut AS INTEGER)), 0) AS max_no
+       FROM wellinfo WHERE id_project = ?`,
+      [projectId]
+    )?.max_no ?? 0);
+    const nextNumber = nextReportNumber(sourceReport.urut, projectMax);
+    const date = nextReportDate(sourceReport.curdate) || todayLocal();
+    const workflow = workflowForNewReport(user);
+
+    const result = run(
+      `INSERT INTO wellinfo
+       (curdate, id_project, platform, wellname, spud_date, location, companyman, oim, mudeng, urut,
+        lockreport, validation_status, created_by_user_id, submitted_at, validated_by_user_id, validated_at,
+        created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+      [
+        date, projectId, sourceReport.platform, sourceReport.wellname, sourceReport.spud_date,
+        sourceReport.location, sourceReport.companyman, sourceReport.oim, sourceReport.mudeng, nextNumber,
+        workflow.lockreport, workflow.validationStatus, Number(user.id_user),
+        workflow.validationStatus === 'VALIDATED' ? new Date().toISOString().replace('T', ' ').slice(0, 19) : null,
+        workflow.validatedBy,
+        workflow.validationStatus === 'VALIDATED' ? new Date().toISOString().replace('T', ' ').slice(0, 19) : null
+      ]
+    );
+
+    const targetWellId = Number(result.lastInsertRowid);
+    for (const table of REPORT_TABLES) cloneWellChild(table, sourceWellId, targetWellId);
+    const detailColumns = tableColumns('details');
+    if (detailColumns.has('datenow')) {
+      run(`UPDATE details SET datenow = ?, updated_at = datetime('now') WHERE id_wellinfo = ?`, [date, targetWellId]);
+    }
+    return targetWellId;
+  });
+}
+
+export function createNextReport(req, res, next) {
+  try {
+    const projectId = Number(req.params.projectId);
+    const source = get(
+      `SELECT * FROM wellinfo WHERE id_project = ?
+       ORDER BY CAST(urut AS INTEGER) DESC, curdate DESC, id_wellinfo DESC LIMIT 1`,
+      [projectId]
+    );
+    if (!source) return res.status(404).render('errors/404', { title: 'No source report found' });
+    const newWellId = createReportFromSource(projectId, source, Number(source.id_wellinfo), req.user);
+    recalculateReportDerivedFields(newWellId);
+    const notice = encodeURIComponent(
+      isReportManager(req.user)
+        ? 'Next report created and validated automatically.'
+        : 'Next report created. Operators can edit until Supervisor/Admin validates it for handover.'
+    );
+    const target = isReportManager(req.user)
+      ? `/projects/${projectId}/reports/${newWellId}?notice=${notice}`
+      : `/projects/${projectId}/reports/${newWellId}/edit?section=report&notice=${notice}`;
+    res.redirect(target);
+  } catch (error) { next(error); }
+}
+
 export function copyReport(req, res, next) {
   try {
     const projectId = Number(req.params.projectId);
     const sourceWellId = Number(req.params.wellId);
     const context = getContext(projectId, sourceWellId);
-    if (!context) {
-      return res.status(404).render('errors/404', { title: 'Report not found' });
-    }
-
-    const newWellId = transaction(() => {
-      const projectMax = Number(get(
-        `SELECT COALESCE(MAX(CAST(urut AS INTEGER)), 0) AS max_no
-         FROM wellinfo WHERE id_project = ?`,
-        [projectId]
-      )?.max_no ?? 0);
-      const nextNumber = nextReportNumber(context.report.urut, projectMax);
-      const date = nextReportDate(context.report.curdate) || todayLocal();
-
-      const result = run(
-        `INSERT INTO wellinfo
-         (curdate, id_project, platform, wellname, spud_date, location, companyman, oim, mudeng, urut,
-          lockreport, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NO', datetime('now'), datetime('now'))`,
-        [
-          date,
-          projectId,
-          context.report.platform,
-          context.report.wellname,
-          context.report.spud_date,
-          context.report.location,
-          context.report.companyman,
-          context.report.oim,
-          context.report.mudeng,
-          nextNumber
-        ]
-      );
-
-      const targetWellId = Number(result.lastInsertRowid);
-      for (const table of REPORT_TABLES) {
-        cloneWellChild(table, sourceWellId, targetWellId);
-      }
-
-      const detailColumns = tableColumns('details');
-      if (detailColumns.has('datenow')) {
-        run(
-          `UPDATE details SET datenow = ?, updated_at = datetime('now') WHERE id_wellinfo = ?`,
-          [date, targetWellId]
-        );
-      }
-
-      return targetWellId;
-    });
-
+    if (!context) return res.status(404).render('errors/404', { title: 'Report not found' });
+    const newWellId = createReportFromSource(projectId, context.report, sourceWellId, req.user);
     recalculateReportDerivedFields(newWellId);
-
     res.redirect(
       `/projects/${projectId}/reports/${newWellId}/edit?section=report&notice=` +
-      encodeURIComponent('New report copied from the previous report.')
+      encodeURIComponent(isReportManager(req.user)
+        ? 'Report copied and validated automatically.'
+        : 'Report copied. Operators can edit until Supervisor/Admin validates it for handover.')
     );
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
+}
+
+export function validateReportAction(req, res, next) {
+  try {
+    const projectId = Number(req.params.projectId);
+    const wellId = Number(req.params.wellId);
+    validateReport(wellId, req.user);
+    res.redirect(`/projects/${projectId}/reports/${wellId}?notice=` + encodeURIComponent('Report validated for handover. Operator viewing/PDF access remains available; Operator editing is now frozen.'));
+  } catch (error) { next(error); }
+}
+
+export function reopenReportAction(req, res, next) {
+  try {
+    const projectId = Number(req.params.projectId);
+    const wellId = Number(req.params.wellId);
+    reopenReport(wellId, req.user);
+    res.redirect(`/projects/${projectId}/reports/${wellId}?notice=` + encodeURIComponent('Report re-opened. Operator editing is available again until the next handover validation.'));
+  } catch (error) { next(error); }
 }
 
 export function deleteReport(req, res, next) {

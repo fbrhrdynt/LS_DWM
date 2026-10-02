@@ -36,13 +36,7 @@
         <span>Well name</span>
         <input name="wellname" maxlength="255" value="<%= project.wellname || '' %>" required>
       </label>
-
-      <label>
-        <span>Report access code</span>
-        <input name="kodeakses" inputmode="numeric" pattern="[0-9]{4,10}" maxlength="10" value="<%= project.kodeakses || '' %>" required>
-      </label>
-
-      <label class="full-field">
+<label class="full-field">
         <span>Client logo - right side of PDF</span>
         <input name="client_logo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
         <small>PNG/JPG, maximum 3 MB. This logo appears on the right side of the Daily Report PDF.</small>

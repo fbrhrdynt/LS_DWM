@@ -319,17 +319,6 @@ export function deleteAccount(req, res, next) {
       return res.redirect('/accounts?notice=' + encodeURIComponent('The last active MASTER account cannot be deleted.'));
     }
 
-    const documents = Number(get(
-      'SELECT COUNT(*) AS total FROM pm_data WHERE id_user = ?',
-      [accountId]
-    )?.total ?? 0);
-
-    if (documents > 0) {
-      return res.redirect('/accounts?notice=' + encodeURIComponent(
-        'This account owns PM documents. Deactivate it instead of deleting it.'
-      ));
-    }
-
     run('DELETE FROM password_reset_tokens WHERE user_id = ?', [accountId]);
     run('DELETE FROM user_security WHERE user_id = ?', [accountId]);
     run('DELETE FROM xusers WHERE id_user = ?', [accountId]);

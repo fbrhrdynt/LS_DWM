@@ -9,8 +9,6 @@ function classify(method, path) {
   if (p.includes('/reports/')) return `report.${method.toLowerCase()}`;
   if (p.startsWith('/projects')) return `project.${method.toLowerCase()}`;
   if (p.startsWith('/assets')) return `asset.${method.toLowerCase()}`;
-  if (p.startsWith('/maintenance')) return `maintenance.${method.toLowerCase()}`;
-  if (p.startsWith('/inspection')) return `inspection.${method.toLowerCase()}`;
   if (p.startsWith('/settings')) return `settings.${method.toLowerCase()}`;
   if (p.startsWith('/profile')) return `profile.${method.toLowerCase()}`;
 

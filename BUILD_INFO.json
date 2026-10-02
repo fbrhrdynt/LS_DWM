@@ -1,12 +1,19 @@
 {
   "name": "DWM",
-  "version": "0.8.6.2",
+  "version": "0.9.1",
   "database": "SQLite via node:sqlite",
   "requires_node": ">=22.5",
   "mysql_required": false,
   "legacy_import": "scripts/import-legacy-sql.js",
   "database_path": "data/dwm.sqlite",
-  "phase": "Assets, Inspection & Preventive Maintenance",
+  "phase": "DWM Reports + Simple Assets",
   "auto_calculation": "client-and-server",
-  "release": "PDF header spacing and vertical alignment"
+  "release": "Handover validation workflow correction",
+  "report_workflow": "Operator pending -> Supervisor/Admin validate -> validated closed to operators",
+  "retired_features": [
+    "Maintenance",
+    "Inspection",
+    "Notification center",
+    "Report access code"
+  ]
 }

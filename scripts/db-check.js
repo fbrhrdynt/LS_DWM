@@ -15,11 +15,6 @@ const requiredTables = [
   'personnel',
   'assets_list',
   'pm_categories',
-  'pm_data',
-  'pm_details',
-  'pm_detail_category',
-  'inspection_category',
-  'inspection_detail',
   'app_settings',
   'password_reset_tokens',
   'user_security',
@@ -39,6 +34,22 @@ try {
     const ok = tables.has(table);
     console.log(`${ok ? 'OK  ' : 'MISS'} ${table}`);
     if (!ok) failed = true;
+  }
+
+
+  const columnChecks = {
+    wellinfo: ['validation_status', 'created_by_user_id', 'submitted_at', 'validated_by_user_id', 'validated_at'],
+    assets_list: ['id_project']
+  };
+
+  for (const [table, columns] of Object.entries(columnChecks)) {
+    if (!tables.has(table)) continue;
+    const existing = new Set(all(`PRAGMA table_info("${table}")`).map(row => row.name));
+    for (const column of columns) {
+      const ok = existing.has(column);
+      console.log(`${ok ? 'OK  ' : 'MISS'} ${table}.${column}`);
+      if (!ok) failed = true;
+    }
   }
 
   process.exit(failed ? 1 : 0);

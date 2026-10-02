@@ -1,61 +1,14 @@
 <header class="topbar">
-  <a class="brand" href="/dashboard" aria-label="DWM dashboard">
-    <span class="brand-mark">D</span>
-    <span>DWM</span>
-  </a>
-
+  <a class="brand" href="/dashboard" aria-label="DWM dashboard"><span class="brand-mark">D</span><span>DWM</span></a>
   <% if (user) { %>
-    <button class="menu-button" id="menuButton" type="button" aria-expanded="false" aria-controls="mobileNav">
-      Menu
-    </button>
-
+    <button class="menu-button" id="menuButton" type="button" aria-expanded="false" aria-controls="mobileNav">Menu</button>
     <nav class="desktop-nav" aria-label="Main navigation">
       <a class="<%= currentPath === '/dashboard' ? 'active' : '' %>" href="/dashboard">Dashboard</a>
-      <a class="<%= currentPath.startsWith('/projects') ? 'active' : '' %>" href="/projects">Projects</a>
+      <a class="<%= currentPath.startsWith('/projects') ? 'active' : '' %>" href="/projects">DWM Reports</a>
       <a class="<%= currentPath.startsWith('/assets') ? 'active' : '' %>" href="/assets">Assets</a>
-      <a class="<%= currentPath.startsWith('/maintenance') ? 'active' : '' %>" href="/maintenance">Maintenance</a>
-      <a class="<%= currentPath.startsWith('/inspection') ? 'active' : '' %>" href="/inspection">Inspection</a>
-      <a class="nav-notification-link <%= currentPath.startsWith('/notifications') ? 'active' : '' %>" href="/notifications">Notifications<% if (notificationCount > 0) { %><span class="nav-badge <%= notificationUrgent > 0 ? 'urgent' : '' %>"><%= notificationCount > 99 ? '99+' : notificationCount %></span><% } %></a>
-      <% if (user.level === 'MASTER') { %>
-        <a class="<%= currentPath.startsWith('/accounts') ? 'active' : '' %>" href="/accounts">Accounts</a>
-        <a class="<%= currentPath.startsWith('/settings') ? 'active' : '' %>" href="/settings/report">Settings</a>
-      <% } %>
+      <% if (user.level === 'MASTER') { %><a class="<%= currentPath.startsWith('/accounts') ? 'active' : '' %>" href="/accounts">Accounts</a><a class="<%= currentPath.startsWith('/settings') ? 'active' : '' %>" href="/settings/report">Settings</a><% } %>
     </nav>
-
-    <div class="account">
-      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch color theme">
-        <span class="theme-dot" aria-hidden="true"></span>
-        <span data-theme-label>Dark</span>
-      </button>
-      <a class="account-name account-link" href="/profile"><%= user.employee_name %></a>
-      <form action="/logout" method="post">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <button class="link-button" type="submit">Sign out</button>
-      </form>
-    </div>
+    <div class="account"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch color theme"><span class="theme-dot" aria-hidden="true"></span><span data-theme-label>Dark</span></button><a class="account-name account-link" href="/profile"><%= user.employee_name %></a><form action="/logout" method="post"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="link-button" type="submit">Sign out</button></form></div>
   <% } %>
 </header>
-
-<% if (user) { %>
-  <nav class="mobile-nav" id="mobileNav" hidden>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/projects">Projects</a>
-    <a href="/assets">Assets</a>
-    <a href="/maintenance">Maintenance</a>
-    <a href="/inspection">Inspection</a>
-    <a href="/notifications">Notifications<% if (notificationCount > 0) { %> (<%= notificationCount %>)<% } %></a>
-    <% if (user.level === 'MASTER') { %>
-      <a href="/accounts">Accounts</a>
-      <a href="/settings/report">Settings</a>
-    <% } %>
-    <a href="/profile">My account</a>
-    <button class="mobile-theme-toggle" type="button" data-theme-toggle>
-      <span>Appearance</span>
-      <strong data-theme-label>Dark</strong>
-    </button>
-    <form action="/logout" method="post">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button type="submit">Sign out</button>
-    </form>
-  </nav>
-<% } %>
+<% if (user) { %><nav class="mobile-nav" id="mobileNav" hidden><a href="/dashboard">Dashboard</a><a href="/projects">DWM Reports</a><a href="/assets">Assets</a><% if (user.level === 'MASTER') { %><a href="/accounts">Accounts</a><a href="/settings/report">Settings</a><% } %><a href="/profile">My account</a><button class="mobile-theme-toggle" type="button" data-theme-toggle><span>Appearance</span><strong data-theme-label>Dark</strong></button><form action="/logout" method="post"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button type="submit">Sign out</button></form></nav><% } %>

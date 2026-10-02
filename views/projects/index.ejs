@@ -44,13 +44,7 @@
           <span>Well name</span>
           <input name="wellname" maxlength="255" value="<%= values.wellname || '' %>" required>
         </label>
-
-        <label>
-          <span>Report access code</span>
-          <input name="kodeakses" inputmode="numeric" pattern="[0-9]{4,10}" maxlength="10" value="<%= values.kodeakses || '' %>" required>
-        </label>
-
-        <div class="form-actions">
+<div class="form-actions">
           <button class="primary-button" type="submit">Create project</button>
         </div>
       </form>

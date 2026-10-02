@@ -84,23 +84,6 @@ The final values are:
 Intermediate WM/WOM calculations preserve the legacy constants and percentages.
 
 
-## Preventive Maintenance Due Date
-
-PM due date is derived from the selected PM category and is recalculated on the server when the record is saved.
-
-- Day: `PM Start + N calendar days`
-- Week: `PM Start + (N × 7) calendar days`
-- Month: `PM Start + N calendar months`, clamped to the last valid day of the target month
-- Year: `PM Start + N calendar years`, clamped for leap-day dates
-
-Examples:
-
-- `2026-01-01 + 2 Week = 2026-01-15`
-- `2026-01-31 + 1 Month = 2026-02-28`
-- `2028-01-31 + 1 Month = 2028-02-29`
-
-Inspection status and PM due badges use the configured DWM timezone and a 30-day warning window.
-
 ## v0.8.4 automatic recalculation chain
 
 Saving any upstream section now refreshes all downstream derived values on the server:

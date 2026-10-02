@@ -17,7 +17,7 @@
     <div class="section-heading">
       <div>
         <h2>Add account</h2>
-        <p class="muted">Operator and Staff accounts must be assigned to a project.</p>
+        <p class="muted">Operator accounts are assigned to exactly one project. Changing the assignment removes access to the previous project immediately.</p>
       </div>
     </div>
 
@@ -53,14 +53,14 @@
         <span>Level</span>
         <select name="level" data-role-select required>
           <option value="" <%= !values.level ? 'selected' : '' %> disabled>Select level</option>
-          <% ['MASTER', 'Supervisor', 'Operator', 'Staff'].forEach(level => { %>
-            <option value="<%= level %>" <%= values.level === level ? 'selected' : '' %>><%= level %></option>
+          <% [['MASTER','Admin'],['Supervisor','Supervisor'],['Operator','Operator']].forEach(([level,label]) => { %>
+            <option value="<%= level %>" <%= values.level === level ? 'selected' : '' %>><%= label %></option>
           <% }) %>
         </select>
       </label>
 
       <label class="project-field">
-        <span>Assigned project</span>
+        <span>Assigned project (Operator only)</span>
         <select name="id_project">
           <option value="">Select project</option>
           <% projects.forEach(project => { %>
@@ -92,7 +92,7 @@
             <strong><%= account.employee_name %></strong>
             <p><%= account.employee_id %> · @<%= account.kode_login %></p>
             <div class="meta-row">
-              <span class="badge"><%= account.level %></span>
+              <span class="badge"><%= account.level === 'MASTER' ? 'Admin' : account.level %></span>
               <span class="badge <%= account.status === 'Y' ? 'badge-success' : 'badge-muted' %>">
                 <%= account.status === 'Y' ? 'Active' : 'Inactive' %>
               </span>

@@ -1,61 +1,16 @@
 <%- include('../partials/head') %>
 <%- include('../partials/nav') %>
-
 <main class="page">
-  <div class="page-heading">
-    <div>
-      <p class="eyebrow">Overview</p>
-      <h1>Dashboard</h1>
-    </div>
-    <p class="muted">Signed in as <strong><%= user.level %></strong></p>
-  </div>
-
+  <div class="page-heading"><div><p class="eyebrow">Overview</p><h1>Dashboard</h1></div><p class="muted">Signed in as <strong><%= user.level %></strong></p></div>
   <section class="stats-grid" aria-label="Summary">
-    <article class="stat-card">
-      <span>Projects</span>
-      <strong><%= stats.projects %></strong>
-    </article>
-    <article class="stat-card">
-      <span>Reports</span>
-      <strong><%= stats.reports %></strong>
-    </article>
-    <article class="stat-card">
-      <span>Assets</span>
-      <strong><%= stats.assets %></strong>
-    </article>
-    <article class="stat-card">
-      <span>Active users</span>
-      <strong><%= stats.users %></strong>
-    </article>
-    <a class="stat-card stat-link" href="/inspection">
-      <span>Inspection due ≤30d</span>
-      <strong><%= stats.inspectionDue %></strong>
-    </a>
-    <a class="stat-card stat-link" href="/maintenance">
-      <span>PM due ≤30d</span>
-      <strong><%= stats.pmDue %></strong>
-    </a>
+    <article class="stat-card"><span>Projects</span><strong><%= stats.projects %></strong></article>
+    <article class="stat-card"><span>Reports</span><strong><%= stats.reports %></strong></article>
+    <article class="stat-card"><span>Assets</span><strong><%= stats.assets %></strong></article>
+    <article class="stat-card"><span>Pending validation</span><strong><%= stats.pending %></strong></article>
+    <article class="stat-card"><span>Validated</span><strong><%= stats.validated %></strong></article>
   </section>
-
-  <% if (notifications && notifications.length) { %>
-    <section class="panel dashboard-alerts">
-      <div class="section-heading">
-        <div>
-          <h2>Needs attention</h2>
-          <p class="muted"><%= notificationStats.overdue %> overdue/expired · <%= notificationStats.due7 %> due within 7 days</p>
-        </div>
-        <a class="secondary-button" href="/notifications">View all</a>
-      </div>
-      <div class="notification-compact-list">
-        <% notifications.forEach(item => { %>
-          <a href="<%= item.href %>" class="notification-compact severity-<%= item.severity %>">
-            <div><strong><%= item.title %></strong><span><%= item.message %></span></div>
-            <small><%= item.dueDate %></small>
-          </a>
-        <% }) %>
-      </div>
-    </section>
-  <% } %>
+  <section class="panel"><div class="section-heading"><div><h2>Recent reports</h2><p class="muted"><%= manager ? 'Supervisor/Admin can validate or re-open reports.' : 'Validated reports are closed until a Supervisor/Admin re-opens them.' %></p></div></div>
+    <div class="responsive-list"><% recent.forEach(r => { const closed = !manager && r.validation_status === 'VALIDATED'; %><article class="management-row"><div class="management-main"><strong>Report <%= formatReportNo(r.urut, r.id_wellinfo) %> · <%= r.wellname || '-' %></strong><p><%= r.operator_name %> · <%= r.curdate || '-' %></p><div class="meta-row"><span class="badge <%= r.validation_status === 'VALIDATED' ? 'badge-success' : r.validation_status === 'PENDING' ? 'badge-warning' : 'badge-muted' %>"><%= r.validation_status === 'PENDING' ? 'Pending validation' : r.validation_status === 'VALIDATED' ? 'Validated' : 'Draft' %></span></div></div><div class="row-actions"><% if (!closed) { %><a class="secondary-button" href="/projects/<%= r.id_project %>/reports/<%= r.id_wellinfo %>">Open</a><% } else { %><span class="muted">Closed</span><% } %></div></article><% }) %></div>
+  </section>
 </main>
-
 <%- include('../partials/foot') %>

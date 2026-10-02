@@ -1,3 +1,4 @@
+import { operatorCanEditReport } from '../services/report-workflow.service.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import { all, get, run, transaction } from '../config/db.js';
@@ -39,23 +40,11 @@ function validateProjectInput(body) {
   const operatorName = clean(body.operator_name);
   const drillingrig = clean(body.drillingrig);
   const wellname = clean(body.wellname);
-  const accessCodeRaw = clean(body.kodeakses, 10);
-
   if (!contract) throw new Error('Contract is required.');
   if (!operatorName) throw new Error('Operator name is required.');
   if (!drillingrig) throw new Error('Drilling rig is required.');
   if (!wellname) throw new Error('Well name is required.');
-  if (!/^\d{4,10}$/.test(accessCodeRaw)) {
-    throw new Error('Access code must contain 4 to 10 digits.');
-  }
-
-  return {
-    contract,
-    operatorName,
-    drillingrig,
-    wellname,
-    kodeakses: Number(accessCodeRaw)
-  };
+  return { contract, operatorName, drillingrig, wellname };
 }
 
 function accessibleProjects(user) {
@@ -89,27 +78,24 @@ function renderProjectIndex(req, res, { error = null, values = {} } = {}) {
 
 function createInitialReport(projectId, input) {
   const date = todayLocal();
-
   const result = run(
     `INSERT INTO wellinfo
-     (curdate, id_project, platform, wellname, spud_date, location, companyman, oim, mudeng, urut, lockreport, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, '', '', '', '', '1', 'NO', datetime('now'), datetime('now'))`,
+     (curdate, id_project, platform, wellname, spud_date, location, companyman, oim, mudeng, urut,
+      lockreport, validation_status, created_by_user_id, submitted_at, validated_by_user_id, validated_at,
+      created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, '', '', '', '', '1', 'NO', 'DRAFT', NULL, NULL, NULL, NULL, datetime('now'), datetime('now'))`,
     [date, projectId, input.contract, input.wellname, date]
   );
-
   const wellId = Number(result.lastInsertRowid);
-
   for (const table of ['details', 'retorts', 'desanders', 'desilters', 'dailywaste', 'additional', 'personnel']) {
     run(`INSERT INTO ${table} (id_wellinfo) VALUES (?)`, [wellId]);
   }
-
   run(
     `INSERT INTO cuttingsbypassed
      (id_wellinfo, percentage, volume, from_depth, each_from_depth, to_depth, each_to_depth, created_at, updated_at)
      VALUES (?, 0, 0, 0, 'Metre', 0, 'Metre', datetime('now'), datetime('now'))`,
     [wellId]
   );
-
   return wellId;
 }
 
@@ -128,9 +114,9 @@ export function createProject(req, res, next) {
     transaction(() => {
       const result = run(
         `INSERT INTO projects
-         (contract, operator_name, drillingrig, logo, wellname, kodeakses, created_at, updated_at)
-         VALUES (?, ?, ?, NULL, ?, ?, datetime('now'), datetime('now'))`,
-        [input.contract, input.operatorName, input.drillingrig, input.wellname, input.kodeakses]
+         (contract, operator_name, drillingrig, logo, wellname, created_at, updated_at)
+         VALUES (?, ?, ?, NULL, ?, datetime('now'), datetime('now'))`,
+        [input.contract, input.operatorName, input.drillingrig, input.wellname]
       );
 
       const projectId = Number(result.lastInsertRowid);
@@ -153,7 +139,7 @@ export function editProjectPage(req, res, next) {
   try {
     const projectId = Number(req.params.projectId);
     const project = get(
-      `SELECT id_project, contract, operator_name, drillingrig, wellname, logo, kodeakses
+      `SELECT id_project, contract, operator_name, drillingrig, wellname, logo
        FROM projects WHERE id_project = ? LIMIT 1`,
       [projectId]
     );
@@ -191,9 +177,9 @@ export async function updateProject(req, res, next) {
 
     run(
       `UPDATE projects
-       SET contract = ?, operator_name = ?, drillingrig = ?, wellname = ?, kodeakses = ?, logo = ?, updated_at = datetime('now')
+       SET contract = ?, operator_name = ?, drillingrig = ?, wellname = ?, logo = ?, updated_at = datetime('now')
        WHERE id_project = ?`,
-      [input.contract, input.operatorName, input.drillingrig, input.wellname, input.kodeakses, nextLogo, projectId]
+      [input.contract, input.operatorName, input.drillingrig, input.wellname, nextLogo, projectId]
     );
 
     if ((uploadedPath || removeLogo) && existing.logo && existing.logo !== nextLogo) {
@@ -218,7 +204,6 @@ export async function updateProject(req, res, next) {
           operator_name: req.body.operator_name,
           drillingrig: req.body.drillingrig,
           wellname: req.body.wellname,
-          kodeakses: req.body.kodeakses,
           logo: existing?.logo || null
         },
         error: error.message
@@ -279,6 +264,17 @@ export function deleteProject(req, res, next) {
       ));
     }
 
+    const assignedAssets = Number(get(
+      `SELECT COUNT(*) AS total FROM assets_list WHERE id_project = ?`,
+      [projectId]
+    )?.total ?? 0);
+
+    if (assignedAssets > 0) {
+      return res.redirect('/projects?notice=' + encodeURIComponent(
+        'Project cannot be deleted while assets are assigned to it. Reassign or delete those assets first.'
+      ));
+    }
+
     deleteProjectTree(projectId);
     if (project.logo) deleteStoredUpload(project.logo);
     res.redirect('/projects?notice=' + encodeURIComponent('Project and all related reports deleted successfully.'));
@@ -290,34 +286,31 @@ export function deleteProject(req, res, next) {
 export function projectReports(req, res, next) {
   try {
     const projectId = Number(req.params.projectId);
-
     const project = get(
       `SELECT id_project, contract, operator_name, drillingrig, wellname, logo
-       FROM projects WHERE id_project = ? LIMIT 1`,
-      [projectId]
+       FROM projects WHERE id_project = ? LIMIT 1`, [projectId]
     );
-
-    if (!project) {
-      return res.status(404).render('errors/404', { title: 'Project not found' });
-    }
+    if (!project) return res.status(404).render('errors/404', { title: 'Project not found' });
 
     const reports = all(
-      `SELECT id_wellinfo, curdate, platform, wellname, spud_date, location, urut, lockreport
-       FROM wellinfo
-       WHERE id_project = ?
-       ORDER BY curdate DESC, CAST(urut AS INTEGER) DESC, id_wellinfo DESC`,
-      [projectId]
+      `SELECT w.id_wellinfo, w.curdate, w.platform, w.wellname, w.spud_date, w.location, w.urut, w.lockreport,
+              w.validation_status, w.created_by_user_id, w.submitted_at, w.validated_by_user_id, w.validated_at,
+              creator.employee_name AS created_by_name, validator.employee_name AS validated_by_name
+       FROM wellinfo w
+       LEFT JOIN xusers creator ON creator.id_user = w.created_by_user_id
+       LEFT JOIN xusers validator ON validator.id_user = w.validated_by_user_id
+       WHERE w.id_project = ?
+       ORDER BY w.curdate DESC, CAST(w.urut AS INTEGER) DESC, w.id_wellinfo DESC`, [projectId]
     );
-
+    const assets = all(
+      `SELECT id, asset_name, company_asset, mfg_sn, status
+       FROM assets_list WHERE id_project = ? ORDER BY asset_name COLLATE NOCASE`, [projectId]
+    );
     res.render('projects/reports', {
-      title: project.operator_name || 'Project reports',
-      project,
-      reports,
-      notice: clean(req.query.notice, 300)
+      title: project.operator_name || 'Project reports', project, reports, assets,
+      isManager: canManageProjects(req.user), notice: clean(req.query.notice, 300)
     });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 }
 
 export function reportDetail(req, res, next) {
@@ -333,7 +326,7 @@ export function reportDetail(req, res, next) {
 
     const report = get(
       `SELECT id_wellinfo, curdate, id_project, platform, wellname, spud_date, location,
-              companyman, oim, mudeng, urut, lockreport, created_at, updated_at
+              companyman, oim, mudeng, urut, lockreport, validation_status, created_by_user_id, submitted_at, validated_by_user_id, validated_at, created_at, updated_at
        FROM wellinfo
        WHERE id_wellinfo = ? AND id_project = ?
        LIMIT 1`,
@@ -366,6 +359,8 @@ export function reportDetail(req, res, next) {
       personnel,
       additional,
       reportSettings: getReportSettings(),
+      isManager: canManageProjects(req.user),
+      canEdit: operatorCanEditReport(req.user, report),
       notice: clean(req.query.notice, 300)
     });
   } catch (error) {

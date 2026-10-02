@@ -29,6 +29,16 @@ db.exec(`
     updated_at TEXT
   );
 
+  -- Internal compatibility table only. Maintenance UI was retired in v0.9,
+  -- but legacy assets_list.id_pm_category is NOT NULL.
+  CREATE TABLE IF NOT EXISTS pm_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    notes TEXT,
+    created_at TEXT,
+    updated_at TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -72,6 +82,53 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_audit_action
     ON audit_logs(action, created_at DESC);
 `);
+
+function rawTableExists(name) {
+  return Boolean(db.prepare(
+    `SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1`
+  ).get(name));
+}
+
+function ensureColumn(table, column, definition) {
+  if (!rawTableExists(table)) return;
+  const columns = new Set(db.prepare(`PRAGMA table_info("${table}")`).all().map(row => row.name));
+  if (!columns.has(column)) {
+    db.exec(`ALTER TABLE "${table}" ADD COLUMN "${column}" ${definition}`);
+  }
+}
+
+if (rawTableExists('wellinfo')) {
+  ensureColumn('wellinfo', 'validation_status', "TEXT NOT NULL DEFAULT 'DRAFT'");
+  ensureColumn('wellinfo', 'created_by_user_id', 'INTEGER');
+  ensureColumn('wellinfo', 'submitted_at', 'TEXT');
+  ensureColumn('wellinfo', 'validated_by_user_id', 'INTEGER');
+  ensureColumn('wellinfo', 'validated_at', 'TEXT');
+
+  db.exec(`
+    UPDATE wellinfo
+    SET validation_status = CASE
+      WHEN lockreport = 'YES' THEN 'VALIDATED'
+      WHEN COALESCE(validation_status, '') IN ('DRAFT','PENDING','VALIDATED') THEN validation_status
+      ELSE 'DRAFT'
+    END;
+
+    CREATE INDEX IF NOT EXISTS idx_wellinfo_validation
+      ON wellinfo(id_project, validation_status, curdate);
+  `);
+}
+
+if (rawTableExists('assets_list')) {
+  ensureColumn('assets_list', 'id_project', 'INTEGER');
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_assets_project
+      ON assets_list(id_project, asset_name);
+  `);
+}
+
+// Report access codes are retired in v0.9. Authorization is role/project based.
+if (rawTableExists('projects')) {
+  db.exec(`UPDATE projects SET kodeakses = NULL WHERE kodeakses IS NOT NULL;`);
+}
 
 export function all(sql, params = []) {
   return db.prepare(sql).all(...params);

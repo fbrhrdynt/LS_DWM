@@ -1,75 +1,35 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middleware/auth.js';
-import { requireProjectAccess, requireRole, requireWellBelongsToProject } from '../middleware/access.js';
+import {
+  requireProjectAccess,
+  requireReportEditAccess,
+  requireReportOpenAccess,
+  requireRole,
+  requireWellBelongsToProject
+} from '../middleware/access.js';
 import {
   reportEditor,
   saveReportSection,
-  lockReport,
-  unlockReport,
   copyReport,
+  createNextReport,
+  validateReportAction,
+  reopenReportAction,
   deleteReport,
   recalculateReport
 } from '../controllers/report.controller.js';
 
 const router = Router();
+const reportViewAccess = [requireAuth, requireProjectAccess, requireWellBelongsToProject, requireReportOpenAccess];
+const reportEditAccess = [requireAuth, requireProjectAccess, requireWellBelongsToProject, requireReportEditAccess];
+const managerReportAccess = [requireAuth, requireRole('MASTER', 'Supervisor'), requireProjectAccess, requireWellBelongsToProject];
 
-const unlockLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 8,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: 'Too many unlock attempts. Please try again later.'
-});
-
-const reportAccess = [requireAuth, requireProjectAccess, requireWellBelongsToProject];
-
-router.get(
-  '/projects/:projectId/reports/:wellId/edit',
-  ...reportAccess,
-  reportEditor
-);
-
-router.post(
-  '/projects/:projectId/reports/:wellId/sections/:section',
-  ...reportAccess,
-  saveReportSection
-);
-
-router.post(
-  '/projects/:projectId/reports/:wellId/lock',
-  ...reportAccess,
-  lockReport
-);
-
-router.post(
-  '/projects/:projectId/reports/:wellId/unlock',
-  requireAuth,
-  unlockLimiter,
-  requireProjectAccess,
-  requireWellBelongsToProject,
-  unlockReport
-);
-
-router.post(
-  '/projects/:projectId/reports/:wellId/copy',
-  ...reportAccess,
-  copyReport
-);
-
-router.post(
-  '/projects/:projectId/reports/:wellId/recalculate',
-  ...reportAccess,
-  recalculateReport
-);
-
-router.post(
-  '/projects/:projectId/reports/:wellId/delete',
-  requireAuth,
-  requireRole('MASTER', 'Supervisor'),
-  requireProjectAccess,
-  requireWellBelongsToProject,
-  deleteReport
-);
+router.post('/projects/:projectId/reports/new', requireAuth, requireProjectAccess, createNextReport);
+router.get('/projects/:projectId/reports/:wellId/edit', ...reportEditAccess, reportEditor);
+router.post('/projects/:projectId/reports/:wellId/sections/:section', ...reportEditAccess, saveReportSection);
+router.post('/projects/:projectId/reports/:wellId/copy', ...reportViewAccess, copyReport);
+router.post('/projects/:projectId/reports/:wellId/recalculate', ...reportEditAccess, recalculateReport);
+router.post('/projects/:projectId/reports/:wellId/validate', ...managerReportAccess, validateReportAction);
+router.post('/projects/:projectId/reports/:wellId/reopen', ...managerReportAccess, reopenReportAction);
+router.post('/projects/:projectId/reports/:wellId/delete', ...managerReportAccess, deleteReport);
 
 export default router;

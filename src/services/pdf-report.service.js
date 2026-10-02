@@ -533,33 +533,33 @@ function drawEquipment(doc, data, x, y, width) {
 
   for (const r of shakerRows) {
     y = row(doc, x, y, width, [
-      textCell(r[0], 24, { unit: plain(r[1]), minFontSize: 3.8 }),
-      textCell(r[2], 9, { align: 'center' }),
-      textCell(r[3], 9.5, { align: 'center' }),
+      textCell(r[0], 24.2, { unit: plain(r[1]), minFontSize: 3.8 }),
+      textCell(r[2], 9.2, { align: 'center' }),
+      textCell(r[3], 9.2, { align: 'center' }),
       textCell(r[4], 10, { align: 'center' }),
       textCell(r[5], 10, { align: 'center' }),
       textCell(r[6], 15, { align: 'center' }),
       textCell(r[7], 15, { align: 'center' }),
-      textCell(r[8], 7.5, { align: 'center' })
+      textCell(r[8], 7.4, { align: 'center' })
     ], { height: 9.4, fontSize: 4.85, minFontSize: 3.8 });
   }
 
   y = row(doc, x, y, width, [
-    textCell('Effluent Return to', 24, { unit: '' }),
-    textCell(d.cf1_effluentreturn, 9, { align: 'center' }),
-    textCell(d.cf2_effluentreturn, 9.5, { align: 'center' }),
+    textCell('Effluent Return to', 24.2, { unit: '' }),
+    textCell(d.cf1_effluentreturn, 9.2, { align: 'center' }),
+    textCell(d.cf2_effluentreturn, 9.2, { align: 'center' }),
     textCell(d.cf3_effluentreturn, 10, { align: 'center' }),
     textCell('Screens Changed', 10, { align: 'center', fontSize: 4.4 }),
-    textCell(d.screens_changed, 37.5, { align: 'left', minFontSize: 3.8 })
+    textCell(d.screens_changed, 37.4, { align: 'left', minFontSize: 3.8 })
   ], { height: 9.4, fontSize: 4.85, minFontSize: 3.8 });
 
   y = row(doc, x, y, width, [
-    textCell('Underflow Discharge to', 24, { unit: '' }),
-    textCell(d.cf1_underflow, 9, { align: 'center' }),
-    textCell(d.cf2_underflow, 9.5, { align: 'center' }),
+    textCell('Underflow Discharge to', 24.2, { unit: '' }),
+    textCell(d.cf1_underflow, 9.2, { align: 'center' }),
+    textCell(d.cf2_underflow, 9.2, { align: 'center' }),
     textCell(d.cf3_underflow, 10, { align: 'center' }),
-    greenCell('DESANDER', 23),
-    greenCell('DESILTER', 24.5)
+    greenCell('DESANDER', 23.7),
+    greenCell('DESILTER', 23.7)
   ], { height: 10, fontSize: 4.9 });
 
   const combined = [
@@ -576,14 +576,14 @@ function drawEquipment(doc, data, x, y, width) {
 
   for (const r of combined) {
     y = row(doc, x, y, width, [
-      textCell(r[0], 24, { unit: plain(r[1]), minFontSize: 3.7 }),
-      textCell(r[2], 9, { align: 'center' }),
-      textCell(r[3], 9.5, { align: 'center' }),
+      textCell(r[0], 24.2, { unit: plain(r[1]), minFontSize: 3.7 }),
+      textCell(r[2], 9.2, { align: 'center' }),
+      textCell(r[3], 9.2, { align: 'center' }),
       textCell(r[4], 10, { align: 'center' }),
       textCell(r[5], 15, { fontSize: 4.4 }),
-      textCell(r[6], 8, { align: 'center' }),
+      textCell(r[6], 8.7, { align: 'center' }),
       textCell(r[7], 15, { fontSize: 4.4 }),
-      textCell(r[8], 9.5, { align: 'center' })
+      textCell(r[8], 8.7, { align: 'center' })
     ], { height: 9.35, fontSize: 4.75, minFontSize: 3.7 });
   }
 
@@ -685,7 +685,7 @@ function drawRetort(doc, data, x, y, width) {
 
   {
     const h = 10;
-    const widths = pctWidths(width, [25, 9.5, 9.5, 9.2, 9.5, 9.5, 13.9, 13.9]);
+    const widths = pctWidths(width, [24.2, 9.2, 9.2, 10, 10, 9.6, 13.9, 13.9]);
     let cx = x;
 
     cell(doc, cx, y, widths[0], h * 2, 'RETORT WORKSHEET\n& VOLUME DISCHARGE', {
@@ -726,12 +726,12 @@ function drawRetort(doc, data, x, y, width) {
 
   const toDepth = [plain(c.to_depth), plain(c.each_to_depth)].filter(Boolean).join(' ');
   y = row(doc, x, y, width, [
-    textCell('Type/Model', 25, { unit: '' }),
-    textCell(d.sh1_model, 9.5, { align: 'center' }),
-    textCell(d.cdu1_model, 9.5, { align: 'center' }),
-    textCell(d.cf1_model, 9.2, { align: 'center' }),
-    textCell(d.cf2_model, 9.5, { align: 'center' }),
-    textCell(d.cf3_model, 9.5, { align: 'center' }),
+    textCell('Type/Model', 24.2, { unit: '' }),
+    textCell(d.sh1_model, 9.2, { align: 'center' }),
+    textCell(d.cdu1_model, 9.2, { align: 'center' }),
+    textCell(d.cf1_model, 10, { align: 'center' }),
+    textCell(d.cf2_model, 10, { align: 'center' }),
+    textCell(d.cf3_model, 9.6, { align: 'center' }),
     textCell(`Volume (bbls) : ${plain(c.volume, '0')}`, 13.9, { fontSize: 4.25 }),
     textCell(`to depth : ${toDepth}`, 13.9, { fontSize: 4.25 })
   ], { height: 10, fontSize: 4.65 });
@@ -745,12 +745,12 @@ function drawRetort(doc, data, x, y, width) {
   for (let i = 0; i < rowsTop.length; i++) {
     const rr = rowsTop[i];
     y = row(doc, x, y, width, [
-      textCell(rr[0], 25, { unit: plain(rr[1]), minFontSize: 3.8 }),
-      textCell(rr[2], 9.5, { align: 'center' }),
-      textCell(rr[3], 9.5, { align: 'center' }),
-      textCell(rr[4], 9.2, { align: 'center' }),
-      textCell(rr[5], 9.5, { align: 'center' }),
-      textCell(rr[6], 9.5, { align: 'center' }),
+      textCell(rr[0], 24.2, { unit: plain(rr[1]), minFontSize: 3.8 }),
+      textCell(rr[2], 9.2, { align: 'center' }),
+      textCell(rr[3], 9.2, { align: 'center' }),
+      textCell(rr[4], 10, { align: 'center' }),
+      textCell(rr[5], 10, { align: 'center' }),
+      textCell(rr[6], 9.6, { align: 'center' }),
       ...(i === 0
         ? [greenCell('Daily Waste & Average MOC', 27.8)]
         : i === 1
@@ -784,12 +784,12 @@ function drawRetort(doc, data, x, y, width) {
 
   for (const rr of retortRows) {
     y = row(doc, x, y, leftW, [
-      textCell(rr[0], 25 / leftPct * 100, { unit: plain(rr[1]), minFontSize: 3.75 }),
-      textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
-      textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
-      textCell(rr[4], 9.2 / leftPct * 100, { align: 'center' }),
-      textCell(rr[5], 9.5 / leftPct * 100, { align: 'center' }),
-      textCell(rr[6], 9.5 / leftPct * 100, { align: 'center' })
+      textCell(rr[0], 24.2 / leftPct * 100, { unit: plain(rr[1]), minFontSize: 3.75 }),
+      textCell(rr[2], 9.2 / leftPct * 100, { align: 'center' }),
+      textCell(rr[3], 9.2 / leftPct * 100, { align: 'center' }),
+      textCell(rr[4], 10 / leftPct * 100, { align: 'center' }),
+      textCell(rr[5], 10 / leftPct * 100, { align: 'center' }),
+      textCell(rr[6], 9.6 / leftPct * 100, { align: 'center' })
     ], { height: chartRowH, fontSize: 4.45, minFontSize: 3.75 });
   }
 
@@ -813,12 +813,12 @@ function drawRetort(doc, data, x, y, width) {
 
   for (const rr of postChartRows) {
     y = row(doc, x, y, leftW, [
-      textCell(rr[0], 25 / leftPct * 100, { unit: plain(rr[1]), bold: ['Mud-on-Cuttings', 'Oil-on-Cuttings (w.m)'].includes(rr[0]), minFontSize: 3.75 }),
-      textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
-      textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
-      textCell(rr[4], 9.2 / leftPct * 100, { align: 'center' }),
-      textCell(rr[5], 9.5 / leftPct * 100, { align: 'center' }),
-      textCell(rr[6], 9.5 / leftPct * 100, { align: 'center' })
+      textCell(rr[0], 24.2 / leftPct * 100, { unit: plain(rr[1]), bold: ['Mud-on-Cuttings', 'Oil-on-Cuttings (w.m)'].includes(rr[0]), minFontSize: 3.75 }),
+      textCell(rr[2], 9.2 / leftPct * 100, { align: 'center' }),
+      textCell(rr[3], 9.2 / leftPct * 100, { align: 'center' }),
+      textCell(rr[4], 10 / leftPct * 100, { align: 'center' }),
+      textCell(rr[5], 10 / leftPct * 100, { align: 'center' }),
+      textCell(rr[6], 9.6 / leftPct * 100, { align: 'center' })
     ], { height: chartRowH, fontSize: 4.45, minFontSize: 3.75 });
   }
 
@@ -831,12 +831,12 @@ function drawRetort(doc, data, x, y, width) {
 
   for (const rr of finalRetortRows) {
     y = row(doc, x, y, leftW, [
-      textCell(rr[0], 25 / leftPct * 100, { unit: plain(rr[1]), minFontSize: 3.75 }),
-      textCell(rr[2], 9.5 / leftPct * 100, { align: 'center' }),
-      textCell(rr[3], 9.5 / leftPct * 100, { align: 'center' }),
-      textCell(rr[4], 9.2 / leftPct * 100, { align: 'center' }),
-      textCell(rr[5], 9.5 / leftPct * 100, { align: 'center' }),
-      textCell(rr[6], 9.5 / leftPct * 100, { align: 'center' })
+      textCell(rr[0], 24.2 / leftPct * 100, { unit: plain(rr[1]), minFontSize: 3.75 }),
+      textCell(rr[2], 9.2 / leftPct * 100, { align: 'center' }),
+      textCell(rr[3], 9.2 / leftPct * 100, { align: 'center' }),
+      textCell(rr[4], 10 / leftPct * 100, { align: 'center' }),
+      textCell(rr[5], 10 / leftPct * 100, { align: 'center' }),
+      textCell(rr[6], 9.6 / leftPct * 100, { align: 'center' })
     ], { height: chartRowH, fontSize: 4.45, minFontSize: 3.75 });
   }
 

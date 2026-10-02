@@ -12,7 +12,11 @@ for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
   }
 }
 
-for (const legacyDoc of ['DEPLOY_v0.6.2.md', 'DEPLOY_v0.7.md']) {
+for (const legacyDoc of [
+  'DEPLOY_v0.6.2.md', 'DEPLOY_v0.7.md', 'DEPLOY_v0.8.md', 'DEPLOY_v0.8.4.md',
+  'PATCH_NOTES_v0.8.4.md', 'PATCH_NOTES_v0.8.5.md', 'PATCH_NOTES_v0.8.6.md',
+  'PATCH_NOTES_v0.8.6.1.md', 'PATCH_NOTES_v0.8.6.2.md', 'RELEASE_0.8.md'
+]) {
   const target = path.join(root, legacyDoc);
   if (fs.existsSync(target)) {
     fs.rmSync(target, { force: true });

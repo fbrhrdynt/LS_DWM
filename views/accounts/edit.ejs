@@ -46,14 +46,15 @@
       <label>
         <span>Level</span>
         <select name="level" data-role-select required>
-          <% ['MASTER', 'Supervisor', 'Operator', 'Staff'].forEach(level => { %>
-            <option value="<%= level %>" <%= account.level === level ? 'selected' : '' %>><%= level %></option>
+          <% [['MASTER','Admin'],['Supervisor','Supervisor'],['Operator','Operator']].forEach(([level,label]) => { %>
+            <option value="<%= level %>" <%= account.level === level ? 'selected' : '' %>><%= label %></option>
           <% }) %>
+          <% if (account.level === 'Staff') { %><option value="Staff" selected>Staff (legacy)</option><% } %>
         </select>
       </label>
 
       <label class="project-field">
-        <span>Assigned project</span>
+        <span>Assigned project (Operator only)</span>
         <select name="id_project">
           <option value="">Select project</option>
           <% projects.forEach(project => { %>

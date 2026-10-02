@@ -1,6 +1,6 @@
 {
   "name": "dwm",
-  "version": "0.8.6.2",
+  "version": "0.9.1",
   "private": true,
   "type": "module",
   "description": "DWM - lightweight Node.js rewrite of the legacy Laravel application",
@@ -13,9 +13,8 @@
     "db:check": "node scripts/db-check.js",
     "db:import": "node scripts/import-legacy-sql.js",
     "db:backup": "node scripts/backup-db.js",
-    "check": "node --check src/server.js && node --check src/controllers/project.controller.js && node --check src/controllers/report.controller.js && node --check src/controllers/account.controller.js && node --check src/controllers/asset.controller.js && node --check src/controllers/inspection.controller.js && node --check src/controllers/maintenance.controller.js && node --check src/services/report-calculations.js && node --check src/services/maintenance-calculations.js && node --check src/services/file-storage.js && node --check src/routes/report.routes.js && node --check src/routes/asset-maintenance.routes.js && node --check public/js/report-calculations.js && node --check public/js/maintenance.js && node --check public/js/app.js && node --check src/controllers/export.controller.js && node --check src/routes/export.routes.js && node --check src/services/report-export-data.js && node --check src/services/pdf-report.service.js && node --check src/services/well-summary.service.js && node --check src/controllers/settings.controller.js && node --check src/routes/settings.routes.js && node --check src/services/report-settings.service.js && node --check src/services/report-sequence.js && node --check src/services/security.service.js && node --check src/services/audit.service.js && node --check src/services/mail.service.js && node --check src/middleware/audit.js && node --check src/controllers/audit.controller.js && node --check src/routes/audit.routes.js && node --check src/services/notification.service.js && node --check src/controllers/notification.controller.js && node --check src/routes/notification.routes.js && node --check src/middleware/notifications.js && node --check src/services/integrity.service.js && node --check src/services/system-diagnostics.service.js && node --check src/controllers/system.controller.js && node --check src/routes/system.routes.js && node --check src/services/webdav.service.js && node --check src/services/backup-utils.js && node --check src/services/relational-cleanup.service.js && node --check src/routes/legacy-compat.routes.js && node --check scripts/prune-backups.js && node --check scripts/report-renumber.js && node --check src/services/report-recalculation.service.js && node --check public/js/report-ui.js && node --check scripts/cleanup-release-artifacts.js && node --check src/services/fluid-category.service.js",
+    "check": "node --check src/server.js && node --check src/controllers/project.controller.js && node --check src/controllers/report.controller.js && node --check src/controllers/account.controller.js && node --check src/controllers/asset.controller.js && node --check src/services/report-workflow.service.js && node --check src/services/report-calculations.js && node --check src/services/file-storage.js && node --check src/routes/report.routes.js && node --check src/routes/asset.routes.js && node --check public/js/report-calculations.js && node --check public/js/app.js && node --check src/controllers/export.controller.js && node --check src/routes/export.routes.js && node --check src/services/report-export-data.js && node --check src/services/pdf-report.service.js && node --check src/services/well-summary.service.js && node --check src/controllers/settings.controller.js && node --check src/routes/settings.routes.js && node --check src/services/report-settings.service.js && node --check src/services/report-sequence.js && node --check src/services/security.service.js && node --check src/services/audit.service.js && node --check src/services/mail.service.js && node --check src/middleware/audit.js && node --check src/controllers/audit.controller.js && node --check src/routes/audit.routes.js && node --check src/services/integrity.service.js && node --check src/services/system-diagnostics.service.js && node --check src/controllers/system.controller.js && node --check src/routes/system.routes.js && node --check src/services/webdav.service.js && node --check src/services/backup-utils.js && node --check src/services/relational-cleanup.service.js && node --check src/routes/legacy-compat.routes.js && node --check scripts/prune-backups.js && node --check scripts/report-renumber.js && node --check src/services/report-recalculation.service.js && node --check public/js/report-ui.js && node --check scripts/cleanup-release-artifacts.js && node --check src/services/fluid-category.service.js && node --check scripts/workflow-check.js && node --check scripts/v09-cleanup.js",
     "formula:check": "node scripts/formula-check.js",
-    "maintenance:check": "node scripts/maintenance-check.js",
     "export:check": "node scripts/export-check.js",
     "report:check": "node scripts/report-sequence-check.js",
     "security:check": "node scripts/security-check.js",
@@ -27,12 +26,14 @@
     "legacy:files": "node scripts/migrate-legacy-files.js",
     "webdav:check": "node scripts/webdav-check.js",
     "webdav:backup": "node scripts/webdav-backup.js",
-    "release:check": "npm run check && npm run db:check && npm run security:check && npm run report:check && npm run formula:check && npm run maintenance:check && npm run export:check && npm run integrity:check -- --soft && npm run pdf:check",
+    "release:check": "npm run check && npm run db:check && npm run security:check && npm run report:check && npm run formula:check && npm run workflow:check && npm run export:check && npm run integrity:check -- --soft && npm run pdf:check",
     "backup:prune": "node scripts/prune-backups.js",
     "reports:renumber": "node scripts/report-renumber.js",
     "pdf:check": "node scripts/pdf-layout-check.js",
     "cleanup:release": "node scripts/cleanup-release-artifacts.js",
-    "logos:normalize": "node scripts/normalize-logos.js"
+    "logos:normalize": "node scripts/normalize-logos.js",
+    "workflow:check": "node scripts/workflow-check.js",
+    "v09:cleanup": "node scripts/v09-cleanup.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

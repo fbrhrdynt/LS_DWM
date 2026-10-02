@@ -9,8 +9,8 @@
       <p class="muted"><%= report.wellname || project.wellname || 'Well report' %> · <%= report.curdate || '-' %></p>
     </div>
     <div class="heading-actions">
-      <span class="badge <%= report.lockreport === 'YES' ? 'badge-muted' : 'badge-success' %>">
-        <%= report.lockreport === 'YES' ? 'Locked' : 'Open' %>
+      <span class="badge <%= report.validation_status === 'VALIDATED' ? 'badge-success' : report.validation_status === 'PENDING' ? 'badge-warning' : 'badge-muted' %>">
+        <%= report.validation_status === 'PENDING' ? 'Pending validation' : report.validation_status === 'VALIDATED' ? 'Validated' : 'Draft' %>
       </span>
       <a class="secondary-button" href="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>">Overview</a>
     </div>
@@ -19,8 +19,10 @@
   <% if (notice) { %><div class="alert info"><%= notice %></div><% } %>
   <% if (error) { %><div class="alert error"><%= error %></div><% } %>
 
-  <% if (report.lockreport === 'YES') { %>
-    <div class="alert warning">This report is locked. You can review the data, but changes cannot be saved until the report is unlocked.</div>
+  <% if (!canEdit) { %>
+    <div class="alert warning">This report was validated for crew handover. Operators can view the report and PDF, but editing is frozen until a Supervisor/Admin re-opens it.</div>
+  <% } else if (!isManager && report.validation_status === 'PENDING') { %>
+    <div class="alert info">This report is waiting for Supervisor/Admin validation. You can still correct and save it until validation.</div>
   <% } %>
 
   <nav class="section-tabs" aria-label="Report sections">
@@ -151,7 +153,7 @@
                         value="<%= current %>"
                         <% if (type === 'number') { %>step="any" inputmode="decimal"<% } %>
                         <%= calculated ? 'readonly aria-readonly=true' : '' %>
-                        <%= report.lockreport === 'YES' ? 'disabled' : '' %>
+                        <%= !canEdit ? 'disabled' : '' %>
                       >
                     </td>
                   <% }) %>
@@ -177,7 +179,7 @@
                 inputmode="decimal"
                 value="<%= data[name] ?? 0 %>"
                 <%= calculated ? 'readonly aria-readonly=true' : '' %>
-                <%= report.lockreport === 'YES' ? 'disabled' : '' %>
+                <%= !canEdit ? 'disabled' : '' %>
               >
             </label>
           <% }) %>
@@ -209,10 +211,10 @@
                 <tr>
                   <td class="retort-parameter"><%= label %> <span class="retort-auto-label">Auto</span></td>
                   <td>
-                    <input name="<%= bblName %>" type="number" step="any" value="<%= data[bblName] ?? 0 %>" readonly aria-readonly="true" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                    <input name="<%= bblName %>" type="number" step="any" value="<%= data[bblName] ?? 0 %>" readonly aria-readonly="true" <%= !canEdit ? 'disabled' : '' %>>
                   </td>
                   <td>
-                    <input name="<%= m3Name %>" type="number" step="any" value="<%= data[m3Name] ?? 0 %>" readonly aria-readonly="true" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                    <input name="<%= m3Name %>" type="number" step="any" value="<%= data[m3Name] ?? 0 %>" readonly aria-readonly="true" <%= !canEdit ? 'disabled' : '' %>>
                   </td>
                 </tr>
               <% }) %>
@@ -236,17 +238,17 @@
         </div>
 
         <div class="form-grid report-form-grid active-mud-grid">
-          <label><span>PV <small>(cps)</small></span><input name="pv" type="number" step="any" value="<%= data.pv ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
-          <label><span>YP <small>(lbs/100 ft²)</small></span><input name="yp" type="number" step="any" value="<%= data.yp ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
-          <label><span>Sand Content</span><input name="sandcontent" type="number" step="any" value="<%= data.sandcontent ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
-          <label><span>Base Fluid <small>(%)</small></span><input name="basefluid" type="number" step="any" value="<%= data.basefluid ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
-          <label><span>SG Drill Solid / Cutting <small>(sp.gr)</small></span><input name="sgdrillsolid" type="number" step="any" value="<%= data.sgdrillsolid ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
-          <label><span>Chlorides <small>(mg/L)</small></span><input name="chlorides" type="number" step="any" value="<%= data.chlorides ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+          <label><span>PV <small>(cps)</small></span><input name="pv" type="number" step="any" value="<%= data.pv ?? '' %>" <%= !canEdit ? 'disabled' : '' %>></label>
+          <label><span>YP <small>(lbs/100 ft²)</small></span><input name="yp" type="number" step="any" value="<%= data.yp ?? '' %>" <%= !canEdit ? 'disabled' : '' %>></label>
+          <label><span>Sand Content</span><input name="sandcontent" type="number" step="any" value="<%= data.sandcontent ?? '' %>" <%= !canEdit ? 'disabled' : '' %>></label>
+          <label><span>Base Fluid <small>(%)</small></span><input name="basefluid" type="number" step="any" value="<%= data.basefluid ?? '' %>" <%= !canEdit ? 'disabled' : '' %>></label>
+          <label><span>SG Drill Solid / Cutting <small>(sp.gr)</small></span><input name="sgdrillsolid" type="number" step="any" value="<%= data.sgdrillsolid ?? '' %>" <%= !canEdit ? 'disabled' : '' %>></label>
+          <label><span>Chlorides <small>(mg/L)</small></span><input name="chlorides" type="number" step="any" value="<%= data.chlorides ?? '' %>" <%= !canEdit ? 'disabled' : '' %>></label>
           <label>
             <span>Mud Temperature</span>
             <div class="input-with-unit-select">
-              <input name="mudtemp" type="number" step="any" value="<%= data.mudtemp ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
-              <select name="tempunit" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <input name="mudtemp" type="number" step="any" value="<%= data.mudtemp ?? '' %>" <%= !canEdit ? 'disabled' : '' %>>
+              <select name="tempunit" <%= !canEdit ? 'disabled' : '' %>>
                 <option value="degc" <%= data.tempunit === 'degc' ? 'selected' : '' %>>°C</option>
                 <option value="degf" <%= data.tempunit === 'degf' ? 'selected' : '' %>>°F</option>
               </select>
@@ -256,16 +258,16 @@
           <% if (activeMudMeta?.water) { %>
             <label>
               <span>MBT <small>(lb/bbl)</small></span>
-              <input name="categories2" type="number" step="any" value="<%= data.categories2 ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <input name="categories2" type="number" step="any" value="<%= data.categories2 ?? '' %>" <%= !canEdit ? 'disabled' : '' %>>
             </label>
           <% } else { %>
             <label>
               <span>Oil / Water Ratio</span>
-              <input name="categories1" value="<%= data.categories1 ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <input name="categories1" value="<%= data.categories1 ?? '' %>" <%= !canEdit ? 'disabled' : '' %>>
             </label>
             <label>
               <span>E-Stability <small>(Volt)</small></span>
-              <input name="categories2" type="number" step="any" value="<%= data.categories2 ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <input name="categories2" type="number" step="any" value="<%= data.categories2 ?? '' %>" <%= !canEdit ? 'disabled' : '' %>>
             </label>
           <% } %>
         </div>
@@ -296,11 +298,11 @@
               %>
                 <tr>
                   <td>
-                    <input name="<%= nameKey %>" value="<%= nameValue %>" readonly aria-readonly="true" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                    <input name="<%= nameKey %>" value="<%= nameValue %>" readonly aria-readonly="true" <%= !canEdit ? 'disabled' : '' %>>
                   </td>
-                  <td><input name="sh<%= n %>_model" value="<%= data[`sh${n}_model`] ?? '' %>" placeholder="Model" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></td>
-                  <td><input name="sh<%= n %>_screensize" value="<%= data[`sh${n}_screensize`] ?? '' %>" placeholder="Screen size" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></td>
-                  <td><input name="sh<%= n %>_runninghour" type="number" step="any" inputmode="decimal" value="<%= data[`sh${n}_runninghour`] ?? '' %>" placeholder="Hours" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></td>
+                  <td><input name="sh<%= n %>_model" value="<%= data[`sh${n}_model`] ?? '' %>" placeholder="Model" <%= !canEdit ? 'disabled' : '' %>></td>
+                  <td><input name="sh<%= n %>_screensize" value="<%= data[`sh${n}_screensize`] ?? '' %>" placeholder="Screen size" <%= !canEdit ? 'disabled' : '' %>></td>
+                  <td><input name="sh<%= n %>_runninghour" type="number" step="any" inputmode="decimal" value="<%= data[`sh${n}_runninghour`] ?? '' %>" placeholder="Hours" <%= !canEdit ? 'disabled' : '' %>></td>
                 </tr>
               <% }) %>
             </tbody>
@@ -309,7 +311,7 @@
 
         <label class="standalone-field">
           <span>Screens changed</span>
-          <input name="screens_changed" value="<%= data.screens_changed ?? '' %>" placeholder="Insert information about screen changes" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+          <input name="screens_changed" value="<%= data.screens_changed ?? '' %>" placeholder="Insert information about screen changes" <%= !canEdit ? 'disabled' : '' %>>
         </label>
       </section>
     <% } else if (sectionId === 'personnel') { %>
@@ -324,13 +326,13 @@
         <div class="personnel-input-grid">
           <div class="shift-column">
             <div class="shift-heading">Day shift</div>
-            <label><span>Day Shift 1</span><input name="ds1_name" value="<%= data.ds1_name ?? '' %>" placeholder="Name" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
-            <label><span>Day Shift 2</span><input name="ds2_name" value="<%= data.ds2_name ?? '' %>" placeholder="Name" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+            <label><span>Day Shift 1</span><input name="ds1_name" value="<%= data.ds1_name ?? '' %>" placeholder="Name" <%= !canEdit ? 'disabled' : '' %>></label>
+            <label><span>Day Shift 2</span><input name="ds2_name" value="<%= data.ds2_name ?? '' %>" placeholder="Name" <%= !canEdit ? 'disabled' : '' %>></label>
           </div>
           <div class="shift-column">
             <div class="shift-heading">Night shift</div>
-            <label><span>Night Shift 1</span><input name="ns1_name" value="<%= data.ns1_name ?? '' %>" placeholder="Name" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
-            <label><span>Night Shift 2</span><input name="ns2_name" value="<%= data.ns2_name ?? '' %>" placeholder="Name" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+            <label><span>Night Shift 1</span><input name="ns1_name" value="<%= data.ns1_name ?? '' %>" placeholder="Name" <%= !canEdit ? 'disabled' : '' %>></label>
+            <label><span>Night Shift 2</span><input name="ns2_name" value="<%= data.ns2_name ?? '' %>" placeholder="Name" <%= !canEdit ? 'disabled' : '' %>></label>
           </div>
         </div>
       </section>
@@ -347,22 +349,22 @@
           <label class="bypass-percent-field">
             <span>Percentage (%) Cuttings By-Passed</span>
             <div class="bypass-percentage-control">
-              <input data-bypass-percentage name="percentage" type="number" min="0" max="100" step="1" value="<%= data.percentage ?? 0 %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <input data-bypass-percentage name="percentage" type="number" min="0" max="100" step="1" value="<%= data.percentage ?? 0 %>" <%= !canEdit ? 'disabled' : '' %>>
               <span>%</span>
-              <input data-bypass-range type="range" min="0" max="100" step="1" value="<%= data.percentage ?? 0 %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <input data-bypass-range type="range" min="0" max="100" step="1" value="<%= data.percentage ?? 0 %>" <%= !canEdit ? 'disabled' : '' %>>
             </div>
           </label>
 
           <label>
             <span>Volume (bbls)</span>
-            <input name="volume" type="number" min="0" step="any" inputmode="decimal" value="<%= data.volume ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+            <input name="volume" type="number" min="0" step="any" inputmode="decimal" value="<%= data.volume ?? '' %>" <%= !canEdit ? 'disabled' : '' %>>
           </label>
 
           <label>
             <span>From Depth</span>
             <div class="input-with-unit-select">
-              <input name="from_depth" type="number" min="0" step="any" inputmode="decimal" value="<%= data.from_depth ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
-              <select name="each_from_depth" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <input name="from_depth" type="number" min="0" step="any" inputmode="decimal" value="<%= data.from_depth ?? '' %>" <%= !canEdit ? 'disabled' : '' %>>
+              <select name="each_from_depth" <%= !canEdit ? 'disabled' : '' %>>
                 <% ['Metre','Feet'].forEach(unit => { %><option value="<%= unit %>" <%= String(data.each_from_depth || 'Metre') === unit ? 'selected' : '' %>><%= unit %></option><% }) %>
               </select>
             </div>
@@ -371,8 +373,8 @@
           <label>
             <span>To Depth</span>
             <div class="input-with-unit-select">
-              <input name="to_depth" type="number" min="0" step="any" inputmode="decimal" value="<%= data.to_depth ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
-              <select name="each_to_depth" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <input name="to_depth" type="number" min="0" step="any" inputmode="decimal" value="<%= data.to_depth ?? '' %>" <%= !canEdit ? 'disabled' : '' %>>
+              <select name="each_to_depth" <%= !canEdit ? 'disabled' : '' %>>
                 <% ['Metre','Feet'].forEach(unit => { %><option value="<%= unit %>" <%= String(data.each_to_depth || 'Metre') === unit ? 'selected' : '' %>><%= unit %></option><% }) %>
               </select>
             </div>
@@ -416,10 +418,10 @@
                     name="<%= field.name %>"
                     maxlength="<%= field.max || 2000 %>"
                     rows="4"
-                    <%= report.lockreport === 'YES' ? 'disabled' : '' %>
+                    <%= !canEdit ? 'disabled' : '' %>
                   ><%= current %></textarea>
                 <% } else if (field.type === 'select') { %>
-                  <select name="<%= field.name %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                  <select name="<%= field.name %>" <%= !canEdit ? 'disabled' : '' %>>
                     <option value="">—</option>
                     <% (field.options || []).forEach(option => {
                       const optionValue = option && typeof option === 'object' ? option.value : option;
@@ -440,7 +442,7 @@
                     <%= field.required ? 'required' : '' %>
                     <%= field.readonly ? 'readonly aria-readonly=true' : '' %>
                     <%= field.calculated ? 'readonly aria-readonly=true' : '' %>
-                    <%= report.lockreport === 'YES' ? 'disabled' : '' %>
+                    <%= !canEdit ? 'disabled' : '' %>
                   >
                 <% } %>
               </label>
@@ -457,7 +459,7 @@
       </div>
       <div class="savebar-actions">
         <a class="secondary-button" href="/projects/<%= project.id_project %>/reports/<%= report.id_wellinfo %>">Cancel</a>
-        <button class="primary-button" type="submit" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>Save section</button>
+        <button class="primary-button" type="submit" <%= !canEdit ? 'disabled' : '' %>>Save section</button>
       </div>
     </div>
   </form>
