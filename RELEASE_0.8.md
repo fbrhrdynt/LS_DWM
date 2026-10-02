@@ -21,4 +21,24 @@ SMTP requires credentials to send reset emails. WebDAV requires ownCloud/WebDAV 
 - Legacy URL compatibility redirects for active Laravel bookmarks.
 - Backup retention pruning and optional systemd daily backup timer examples.
 
-- Dry-run report renumber tool for legacy projects with duplicate/decimal numbering.
+
+## v0.8.1 PDF fixes
+
+- Fixed client logo lookup in PDF
+- Removed blank placeholders in PDF header
+- Improved well-info and active-mud font sizing
+- Fixed Effluent Return to alignment
+- Fixed bottom recovery/engineer rows alignment
+- Removed generated timestamp footer to match legacy layout and avoid extra blank page
+
+
+## v0.8.2 final PDF parity
+
+- Robust company/client logo path resolution, including legacy Laravel storage paths
+- No dash placeholders in the Well Information header
+- Units are attached to values in the header
+- Larger readable header/Active Mud fonts
+- Effluent Return / Screens Changed columns aligned to the equipment grid
+- Recovery and engineers rows aligned to the same 72.2% / 27.8% Retort split
+- Generated footer restored safely inside page 1
+- `npm run pdf:check` regression check ensures the reference-size report remains exactly one page

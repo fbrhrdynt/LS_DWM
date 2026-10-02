@@ -123,6 +123,24 @@ The legacy application should remain available until the remaining items are imp
 
 External SMTP/WebDAV credentials remain environment configuration only.
 
-## 0.8 release status
 
-Application-side Laravel parity is considered complete for the active modules found in the legacy routes/controllers. The legacy filesystem config included an ownCloud/WebDAV disk but no active controller route using it; DWM 0.8 keeps it as an optional verified backup target. External SMTP/WebDAV availability still depends on credentials and the external services themselves.
+## v0.8.1 PDF fixes
+
+- Fixed client logo lookup in PDF
+- Removed blank placeholders in PDF header
+- Improved well-info and active-mud font sizing
+- Fixed Effluent Return to alignment
+- Fixed bottom recovery/engineer rows alignment
+- Removed generated timestamp footer to match legacy layout and avoid extra blank page
+
+
+## v0.8.2 final PDF parity
+
+- Robust company/client logo path resolution, including legacy Laravel storage paths
+- No dash placeholders in the Well Information header
+- Units are attached to values in the header
+- Larger readable header/Active Mud fonts
+- Effluent Return / Screens Changed columns aligned to the equipment grid
+- Recovery and engineers rows aligned to the same 72.2% / 27.8% Retort split
+- Generated footer restored safely inside page 1
+- `npm run pdf:check` regression check ensures the reference-size report remains exactly one page

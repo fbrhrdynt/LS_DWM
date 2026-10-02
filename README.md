@@ -248,3 +248,25 @@ Excel export, Light/Dark themes, Assets, Inspection and PM are unchanged.
 ## v0.8 Release Candidate
 
 DWM now includes final migration and production-readiness tooling: notifications, integrity diagnostics/repair, verified backup/restore, legacy file migration, optional ownCloud/WebDAV backup, system diagnostics and unified release checks. PDF v0.6.2 layout and v0.7 security behavior remain unchanged.
+
+
+## v0.8.1 PDF fixes
+
+- Fixed client logo lookup in PDF
+- Removed blank placeholders in PDF header
+- Improved well-info and active-mud font sizing
+- Fixed Effluent Return to alignment
+- Fixed bottom recovery/engineer rows alignment
+- Removed generated timestamp footer to match legacy layout and avoid extra blank page
+
+
+## v0.8.2 final PDF parity
+
+- Robust company/client logo path resolution, including legacy Laravel storage paths
+- No dash placeholders in the Well Information header
+- Units are attached to values in the header
+- Larger readable header/Active Mud fonts
+- Effluent Return / Screens Changed columns aligned to the equipment grid
+- Recovery and engineers rows aligned to the same 72.2% / 27.8% Retort split
+- Generated footer restored safely inside page 1
+- `npm run pdf:check` regression check ensures the reference-size report remains exactly one page

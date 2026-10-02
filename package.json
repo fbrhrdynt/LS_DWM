@@ -1,6 +1,6 @@
 {
   "name": "dwm",
-  "version": "0.8.0",
+  "version": "0.8.2",
   "private": true,
   "type": "module",
   "description": "DWM - lightweight Node.js rewrite of the legacy Laravel application",
@@ -29,7 +29,8 @@
     "webdav:backup": "node scripts/webdav-backup.js",
     "release:check": "npm run check && npm run db:check && npm run security:check && npm run report:check && npm run formula:check && npm run maintenance:check && npm run export:check && npm run integrity:check -- --soft",
     "backup:prune": "node scripts/prune-backups.js",
-    "reports:renumber": "node scripts/report-renumber.js"
+    "reports:renumber": "node scripts/report-renumber.js",
+    "pdf:check": "node scripts/pdf-layout-check.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

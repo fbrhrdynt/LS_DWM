@@ -63,17 +63,3 @@ npm run webdav:backup
 ## Optional daily backup timer
 
 Copy `deploy/dwm-backup.service.example` and `deploy/dwm-backup.timer.example` to `/etc/systemd/system/` without the `.example` suffix, adjust the Linux user if needed, then enable the timer.
-
-## Optional legacy report renumber
-
-Dry run only:
-
-```bash
-npm run reports:renumber -- PROJECT_ID
-```
-
-Apply only after reviewing the output:
-
-```bash
-npm run reports:renumber -- PROJECT_ID --apply
-```

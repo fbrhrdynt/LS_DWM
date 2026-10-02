@@ -25,12 +25,24 @@ function val(value, fallback = '-') {
   return value === null || value === undefined || value === '' ? fallback : String(value);
 }
 
+function plain(value, fallback = '') {
+  return value === null || value === undefined || value === '' ? fallback : String(value);
+}
+
+function withUnit(value, unit, fallback = '') {
+  const v = plain(value, '');
+  const u = plain(unit, '');
+  const text = [v, u].filter(Boolean).join(' ').trim();
+  return text || fallback;
+}
+
 function numeric(value, fallback = 0) {
   const n = Number(String(value ?? '').replaceAll(',', ''));
   return Number.isFinite(n) ? n : fallback;
 }
 
 function fluidType(code) {
+  if (code === null || code === undefined || code === '') return '';
   return ({
     'WB-SW': 'Sea Water',
     'WB-WB': 'Water Base',
@@ -38,7 +50,7 @@ function fluidType(code) {
     'OBM-LT': 'LT-Oil Base',
     'OBM-SB': 'Synthetic Base',
     'OBM-EN': 'Enviromul'
-  })[code] || val(code);
+  })[code] || plain(code);
 }
 
 function fluidCategoryLabels(code) {
@@ -49,7 +61,7 @@ function fluidCategoryLabels(code) {
 }
 
 function dateText(value) {
-  if (!value) return '-';
+  if (!value) return '';
   const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!match) return String(value);
   const [, year, month, day] = match;
@@ -77,23 +89,32 @@ function pctWidths(totalWidth, percentages) {
 
 function fitText(doc, text, width, height, options = {}) {
   const font = options.bold ? 'Helvetica-Bold' : 'Helvetica';
-  let size = options.fontSize || 5.15;
-  const min = options.minFontSize || 3.7;
-  const content = val(text, options.fallback ?? '-');
+  let size = options.fontSize || 5.35;
+  const min = options.minFontSize || 4.1;
+  let content = val(text, options.fallback ?? '-');
 
-  doc.font(font);
-  while (size > min) {
-    doc.fontSize(size);
-    const h = doc.heightOfString(content, {
+  const fits = () => {
+    doc.font(font).fontSize(size);
+    return doc.heightOfString(content, {
       width: Math.max(1, width - 4),
       align: options.align || 'left',
       lineGap: 0
-    });
-    if (h <= height - 2) break;
-    size -= 0.25;
+    }) <= height - 2;
+  };
+
+  while (size > min && !fits()) {
+    size -= 0.2;
   }
 
-  doc.fontSize(size);
+  if (!fits()) {
+    let trimmed = content;
+    while (trimmed.length > 1 && !fits()) {
+      trimmed = trimmed.slice(0, -1).trimEnd();
+      content = `${trimmed}…`;
+    }
+  }
+
+  doc.font(font).fontSize(size);
   return content;
 }
 
@@ -115,6 +136,8 @@ function cell(doc, x, y, width, height, text, options = {}) {
   const padY = options.padY ?? 1.5;
   const content = fitText(doc, text, width - padX * 2, height - padY * 2, options);
 
+  doc.save();
+  doc.rect(x + 0.3, y + 0.3, Math.max(0.5, width - 0.6), Math.max(0.5, height - 0.6)).clip();
   doc.fillColor(options.color || BLACK)
     .font(options.bold ? 'Helvetica-Bold' : 'Helvetica')
     .text(
@@ -126,9 +149,10 @@ function cell(doc, x, y, width, height, text, options = {}) {
         height: Math.max(1, height - padY * 2),
         align: options.align || 'left',
         lineGap: 0,
-        ellipsis: Boolean(options.ellipsis)
+        ellipsis: options.ellipsis !== false
       }
     );
+  doc.restore();
 }
 
 function row(doc, x, y, totalWidth, cells, options = {}) {
@@ -204,6 +228,36 @@ function storedUploadCandidate(relativePath) {
   return absolute;
 }
 
+function logoCandidates(value, preferredFolder = '') {
+  if (!value) return [];
+
+  let raw = String(value).trim().replaceAll('\\', '/');
+  if (!raw) return [];
+
+  try {
+    if (/^https?:\/\//i.test(raw)) raw = new URL(raw).pathname;
+  } catch {}
+
+  const noQuery = raw.split('?')[0].split('#')[0];
+  const normalized = noQuery.replace(/^\/+/, '');
+  const withoutStorage = normalized.replace(/^storage\//, '');
+  const withoutUploads = withoutStorage.replace(/^uploads\//, '');
+  const basename = path.basename(normalized);
+
+  return [
+    storedUploadCandidate(normalized),
+    storedUploadCandidate(withoutStorage),
+    storedUploadCandidate(withoutUploads),
+    preferredFolder && storedUploadCandidate(`${preferredFolder}/${basename}`),
+    path.resolve(rootDir, normalized),
+    path.resolve(rootDir, 'storage', 'uploads', withoutUploads),
+    path.resolve(rootDir, 'storage', 'app', 'public', withoutStorage),
+    path.resolve(rootDir, 'public', 'storage', withoutStorage),
+    path.resolve(rootDir, 'public', 'isi', 'logos', basename),
+    path.resolve(rootDir, 'public', 'logos', basename)
+  ].filter(Boolean);
+}
+
 function tryImageCentered(doc, candidates, boxX, boxY, boxWidth, boxHeight, maxWidth, maxHeight) {
   const targetWidth = Math.min(boxWidth, maxWidth || boxWidth);
   const targetHeight = Math.min(boxHeight, maxHeight || boxHeight);
@@ -223,19 +277,18 @@ function drawHeader(doc, data, x, y, width) {
   const rightW = width * 0.25;
   const h = 47;
 
-  const companyStored = storedUploadCandidate(settings.company_logo);
   const companyLogo = tryImageCentered(doc, [
-    companyStored,
+    ...logoCandidates(settings.company_logo, 'branding'),
     process.env.DWM_REPORT_LOGO,
     'public/stepoil_logo.jpeg'
-  ], x, y, leftW, h, 112, 35);
+  ], x, y, leftW, h, 118, 36);
 
   if (!companyLogo) {
     doc.fillColor(GREEN).font('Helvetica-Bold').fontSize(10)
       .text('OUR COMPANY', x + 5, y + 17, { width: leftW - 10, align: 'center' });
   }
 
-  doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(13)
+  doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(13.5)
     .text(title, x + leftW, y + 4, {
       width: centerW,
       align: 'center',
@@ -243,7 +296,7 @@ function drawHeader(doc, data, x, y, width) {
       ellipsis: true
     });
 
-  doc.font('Helvetica').fontSize(6.8)
+  doc.font('Helvetica').fontSize(7.2)
     .text(val(settings.company_header_line_1, ''), x + leftW, y + 22, {
       width: centerW,
       align: 'center',
@@ -258,11 +311,9 @@ function drawHeader(doc, data, x, y, width) {
     });
 
   const projectLogoName = project.logo ? String(project.logo) : '';
-  const projectStored = storedUploadCandidate(projectLogoName);
   const projectLogo = tryImageCentered(doc, [
-    projectStored,
-    projectLogoName && `public/isi/logos/${path.basename(projectLogoName)}`
-  ], x + leftW + centerW, y, rightW, h, 68, 32);
+    ...logoCandidates(projectLogoName, 'project-logos')
+  ], x + leftW + centerW, y, rightW, h, 82, 36);
 
   if (!projectLogo) {
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(7)
@@ -279,30 +330,26 @@ function drawHeader(doc, data, x, y, width) {
 function drawWellInfo(doc, data, x, y, width) {
   const { project, report, details } = data;
   const rows = [
-    ['Operator', project.operator_name, 'Depth (ft)', details.curdepth, 'feet', 'Date', dateText(report.curdate)],
-    ['Well Name', report.wellname, 'Depth 1 Day Before', details.depth1bef, 'feet', 'Spud-in Date', dateText(report.spud_date)],
-    ['Location', report.location, '% Washout', details.washout, '%', 'Bit Size (inch)', details.bitsize],
-    ['Operator Rep', report.companyman, `Vol Hole Drilled (${val(details.volholeunit)})`, details.volholedrill, val(details.volholeunit), 'Bit Type', details.bittype],
-    ['Contractor Rep', report.oim, 'Fluids Type', fluidType(details.fluidtype), '', 'Avg. ROP for Drlg Hrs', details.avgrop],
-    ['Drilling Rig', project.drillingrig, 'Activity', details.rigpresentact, '', 'Circulating Rate gpm', details.cirrategpm]
+    ['Operator', plain(project.operator_name), 'Depth (ft)', withUnit(details.curdepth, 'feet'), 'Date', dateText(report.curdate)],
+    ['Well Name', plain(report.wellname), 'Depth 1 Day Before', withUnit(details.depth1bef, 'feet'), 'Spud-in Date', dateText(report.spud_date)],
+    ['Location', plain(report.location), '% Washout', withUnit(details.washout, '%'), 'Bit Size (inch)', plain(details.bitsize)],
+    ['Operator Rep', plain(report.companyman), 'Vol Hole Drilled', withUnit(details.volholedrill, plain(details.volholeunit)), 'Bit Type', plain(details.bittype)],
+    ['Contractor Rep', plain(report.oim), 'Fluids Type', fluidType(details.fluidtype), 'Avg. ROP for Drlg Hrs', plain(details.avgrop)],
+    ['Drilling Rig', plain(project.drillingrig), 'Activity', plain(details.rigpresentact), 'Circulating Rate', withUnit(details.cirrategpm, 'gpm')]
   ];
 
   for (const r of rows) {
     y = row(doc, x, y, width, [
-      textCell(r[0], 15, { align: 'right', bold: true, border: false }),
-      textCell(`: ${val(r[1])}`, 16, { border: false }),
-      textCell('', 2, { border: false }),
-      textCell(r[2], 12, { align: 'right', bold: true, border: false }),
-      textCell(`: ${val(r[3])}`, 10, { border: false }),
-      textCell(r[4], 5, { border: false }),
-      textCell('', 2, { border: false }),
-      textCell(r[5], 12, { align: 'right', bold: true, border: false }),
-      textCell(`: ${val(r[6])}`, 10, { border: false }),
-      textCell('', 6, { border: false })
-    ], { height: 10.2, fontSize: 5.05 });
+      textCell(r[0], 12, { align: 'right', bold: true, border: false }),
+      textCell(`: ${r[1]}`, 20, { border: false }),
+      textCell(r[2], 16, { align: 'right', bold: true, border: false }),
+      textCell(`: ${r[3]}`, 18, { border: false }),
+      textCell(r[4], 14, { align: 'right', bold: true, border: false }),
+      textCell(`: ${r[5]}`, 20, { border: false })
+    ], { height: 11, fontSize: 5.55, minFontSize: 4.8 });
   }
 
-  return y;
+  return y + 1;
 }
 
 function drawActiveMud(doc, data, x, y, width) {
@@ -313,36 +360,24 @@ function drawActiveMud(doc, data, x, y, width) {
   const result2 = water ? d.basefluid : d.categories2;
 
   y = row(doc, x, y, width, [
-    greenCell('A C T I V E   M U D   P R O P E R T I E S', 100, { fontSize: 6.1, border: false })
-  ], { height: 11 });
+    greenCell('A C T I V E   M U D   P R O P E R T I E S', 100, { fontSize: 6.2, border: false })
+  ], { height: 12 });
 
   const rows = [
-    [
-      `Mud Weight (${val(d.mwunit)})`, d.mudweight,
-      '% LGS', d.lgsactive,
-      'PV (cps)', d.pv,
-      'YP (lbs/100 ft2)', d.yp,
-      labels.left, result1
-    ],
-    [
-      `Mud Temp. (${d.tempunit === 'degc' ? 'C' : 'F'})`, d.mudtemp,
-      '% HGS', d.hgsactive,
-      'Sand Cont', d.sandcontent,
-      'Chlorides (mg/L)', d.chlorides,
-      labels.right, result2
-    ]
+    ['Mud Weight', withUnit(d.mudweight, plain(d.mwunit)), '% LGS', plain(d.lgsactive), 'PV', withUnit(d.pv, 'cps'), 'YP', withUnit(d.yp, 'lbs/100 ft2'), labels.left, plain(result1)],
+    ['Mud Temp.', withUnit(d.mudtemp, d.tempunit === 'degc' ? 'C' : d.tempunit === 'degf' ? 'F' : plain(d.tempunit)), '% HGS', plain(d.hgsactive), 'Sand Cont', plain(d.sandcontent), 'Chlorides', withUnit(d.chlorides, 'mg/L'), labels.right, water ? withUnit(result2, '%') : plain(result2)]
   ];
 
   for (const r of rows) {
     const cells = [];
     for (let i = 0; i < r.length; i += 2) {
-      cells.push(textCell(r[i], 10, { align: 'right', border: false }));
-      cells.push(textCell(`: ${val(r[i + 1])}`, 10, { border: false }));
+      cells.push(textCell(r[i], 10, { align: 'right', border: false, bold: true }));
+      cells.push(textCell(`: ${plain(r[i + 1])}`, 10, { border: false }));
     }
-    y = row(doc, x, y, width, cells, { height: 10, fontSize: 4.95 });
+    y = row(doc, x, y, width, cells, { height: 10.5, fontSize: 5.15, minFontSize: 4.6 });
   }
 
-  return y;
+  return y + 1;
 }
 
 function drawEquipment(doc, data, x, y, width) {
@@ -412,14 +447,14 @@ function drawEquipment(doc, data, x, y, width) {
   }
 
   y = row(doc, x, y, width, [
-    textCell('Effluent Return to', 19.5),
+    textCell('Effluent Return to', 19),
     textCell('', 5),
-    textCell(d.cf1_effluentreturn, 9.5, { align: 'center' }),
+    textCell(d.cf1_effluentreturn, 9, { align: 'center' }),
     textCell(d.cf2_effluentreturn, 9.5, { align: 'center' }),
-    textCell(d.cf3_effluentreturn, 10.5, { align: 'center' }),
-    textCell('Screens Changed', 14, { align: 'center' }),
-    textCell(d.screens_changed, 32, { align: 'left' })
-  ], { height: 9.4, fontSize: 4.75 });
+    textCell(d.cf3_effluentreturn, 10, { align: 'center' }),
+    textCell('Screens Changed', 10, { align: 'center' }),
+    textCell(d.screens_changed, 37.5, { align: 'left' })
+  ], { height: 9.4, fontSize: 4.85, minFontSize: 4.25 });
 
   y = row(doc, x, y, width, [
     textCell('Underflow Discharge to', 19),
@@ -492,7 +527,7 @@ function drawOocChart(doc, retort, x, y, width, height) {
   const legendW = 8;
   const legendX = x + width / 2 - 31;
   doc.save().rect(legendX, y + 5, legendW, 4).fill(GREEN).restore();
-  doc.fillColor(GREY).font('Helvetica').fontSize(3.8)
+  doc.fillColor(GREY).font('Helvetica').fontSize(4.1)
     .text(legendText, legendX + 11, y + 3.6, { width: 55, align: 'left' });
 
   doc.save()
@@ -506,7 +541,7 @@ function drawOocChart(doc, retort, x, y, width, height) {
 
   for (let t = 0; t <= yMax; t += tickStep) {
     const ty = baseY - chartH * (t / yMax);
-    doc.fillColor(GREY).font('Helvetica').fontSize(3.6)
+    doc.fillColor(GREY).font('Helvetica').fontSize(4.0)
       .text(String(t), x + 1, ty - 2, { width: 11, align: 'right' });
     doc.save()
       .strokeColor('#e0e0e0')
@@ -529,9 +564,9 @@ function drawOocChart(doc, retort, x, y, width, height) {
       doc.save().rect(bx, by, barW, bh).fill(GREEN).restore();
     }
 
-    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(3.6)
+    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(4.0)
       .text(v.toFixed(2), bx - 2, Math.max(chartY, by - 5), { width: barW + 4, align: 'center' });
-    doc.fillColor(GREY).font('Helvetica').fontSize(3.2)
+    doc.fillColor(GREY).font('Helvetica').fontSize(3.7)
       .text(labels[i], bx - 5, baseY + 2, { width: barW + 10, align: 'center' });
   });
 }
@@ -728,33 +763,48 @@ function drawRetort(doc, data, x, y, width) {
 
   y = Math.max(y, dwmTop + dwmH);
 
-  y = row(doc, x, y, leftW, [
-    textCell('Oil Recovered', 27, { align: 'center', bold: true }),
-    textCell('Mud Recovered', 21, { align: 'center', bold: true }),
-    textCell('Cumulative Oil / Mud Recovered', 52, { align: 'center', bold: true })
-  ], { height: 9.2, fontSize: 4.6 });
+  const bottomLeftOil = 27 * leftPct / 100;
+  const bottomLeftMud = 21 * leftPct / 100;
+  const bottomLeftCum = 52 * leftPct / 100;
 
-  y = row(doc, x, y, leftW, [
-    textCell(`${val(r.oil_recovered)} ${val(d.volholeunit, '')} (oil)`, 27, { align: 'center' }),
-    textCell(`${val(r.mud_recovered)} ${val(d.volholeunit, '')} (mud)`, 21, { align: 'center' }),
-    textCell(`${val(r.cum_oil)} ${val(d.volholeunit, '')} (oil)     ${val(r.cum_mud)} ${val(d.volholeunit, '')} (mud)`, 52, { align: 'center' })
-  ], { height: 9.2, fontSize: 4.3 });
+  y = row(doc, x, y, width, [
+    textCell('Oil Recovered', bottomLeftOil, { align: 'center', bold: true }),
+    textCell('Mud Recovered', bottomLeftMud, { align: 'center', bold: true }),
+    textCell('Cumulative Oil / Mud Recovered', bottomLeftCum, { align: 'center', bold: true }),
+    textCell('', rightPct)
+  ], { height: 9.8, fontSize: 5.0, minFontSize: 4.5 });
 
-  y = row(doc, x, y, leftW, [
-    greenCell('Day', 27, { align: 'left' }),
-    greenCell('STEP OIL TOOLS ENGINEERS', 47),
-    greenCell('Night', 26, { align: 'right' })
-  ], { height: 9.2, fontSize: 4.7 });
+  const unit = plain(d.volholeunit);
+  const oilText = withUnit(r.oil_recovered, unit, '0') + (unit ? ' (oil)' : '');
+  const mudText = withUnit(r.mud_recovered, unit, '0') + (unit ? ' (mud)' : '');
+  const cumOilText = withUnit(r.cum_oil, unit, '-') + (unit ? ' (oil)' : '');
+  const cumMudText = withUnit(r.cum_mud, unit, '-') + (unit ? ' (mud)' : '');
 
-  y = row(doc, x, y, leftW, [
-    textCell(p.ds1_name, 50, { align: 'center' }),
-    textCell(p.ns1_name, 50, { align: 'center' })
-  ], { height: 9.2, fontSize: 4.5 });
+  y = row(doc, x, y, width, [
+    textCell(oilText, bottomLeftOil, { align: 'center' }),
+    textCell(mudText, bottomLeftMud, { align: 'center' }),
+    textCell(`${cumOilText}     ${cumMudText}`, bottomLeftCum, { align: 'center' }),
+    textCell('', rightPct)
+  ], { height: 9.4, fontSize: 4.8, minFontSize: 4.35 });
 
-  y = row(doc, x, y, leftW, [
-    textCell(p.ds2_name, 50, { align: 'center' }),
-    textCell(p.ns2_name, 50, { align: 'center' })
-  ], { height: 9.2, fontSize: 4.5 });
+  y = row(doc, x, y, width, [
+    greenCell('Day', bottomLeftOil, { align: 'left', padX: 4 }),
+    greenCell('STEP OIL TOOLS ENGINEERS', bottomLeftMud + bottomLeftCum - 26 * leftPct / 100),
+    greenCell('Night', 26 * leftPct / 100, { align: 'right', padX: 4 }),
+    textCell('', rightPct)
+  ], { height: 9.6, fontSize: 4.95, minFontSize: 4.5 });
+
+  y = row(doc, x, y, width, [
+    textCell(plain(p.ds1_name), leftPct / 2, { align: 'center' }),
+    textCell(plain(p.ns1_name), leftPct / 2, { align: 'center' }),
+    textCell('', rightPct)
+  ], { height: 9.4, fontSize: 4.85, minFontSize: 4.35 });
+
+  y = row(doc, x, y, width, [
+    textCell(plain(p.ds2_name), leftPct / 2, { align: 'center' }),
+    textCell(plain(p.ns2_name), leftPct / 2, { align: 'center' }),
+    textCell('', rightPct)
+  ], { height: 9.4, fontSize: 4.85, minFontSize: 4.35 });
 
   return y;
 }
@@ -766,16 +816,21 @@ function footer(doc) {
     timeZone: process.env.APP_TIMEZONE || 'Asia/Jakarta'
   }).format(new Date());
 
-  doc.fillColor(GREY).font('Helvetica').fontSize(4.6)
+  const y = doc.page.height - 19;
+  doc.save();
+  doc.fillColor(GREY).font('Helvetica').fontSize(4.1)
     .text(
       `Generated by DWM on ${generated}`,
       doc.page.margins.left,
-      doc.page.height - 13,
+      y,
       {
         width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
-        align: 'right'
+        height: 5,
+        align: 'right',
+        lineBreak: false
       }
     );
+  doc.restore();
 }
 
 export function pipeDailyReportPdf(res, data) {
@@ -798,8 +853,8 @@ export function pipeDailyReportPdf(res, data) {
 
   doc.pipe(res);
 
-  const x = 15;
-  const width = doc.page.width - 30;
+  const x = 13;
+  const width = doc.page.width - 26;
 
   // Same visual shell as legacy Blade: thin body border inside 10 px page margin.
   doc.save()
