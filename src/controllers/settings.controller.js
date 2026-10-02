@@ -3,6 +3,7 @@ import {
   deleteStoredUpload,
   fileExists,
   relativeUploadPath,
+  normalizeUploadedLogo,
   removeUploadedRequestFile,
   resolveStoredUpload
 } from '../services/file-storage.js';
@@ -33,14 +34,15 @@ export function reportSettingsPage(req, res, next) {
       projects: clientProjects(),
       hasCompanyLogo: Boolean(settings.company_logo && fileExists(settings.company_logo)),
       notice: clean(req.query.notice, 300),
-      error: null
+      error: null,
+      selectedProjectId: Number(req.query.project_id || 0) || null
     });
   } catch (error) {
     next(error);
   }
 }
 
-export function updateReportSettings(req, res, next) {
+export async function updateReportSettings(req, res, next) {
   try {
     const titleTemplate = clean(req.body.report_title_template, 120);
     const line1 = clean(req.body.company_header_line_1, 180);
@@ -57,7 +59,7 @@ export function updateReportSettings(req, res, next) {
     if (!activityLabel) throw new Error('Activity label is required.');
 
     const current = getReportSettings();
-    const uploadedPath = req.file ? relativeUploadPath(req.file) : null;
+    const uploadedPath = req.file ? await normalizeUploadedLogo(req.file) : null;
     const removeLogo = String(req.body.remove_company_logo || '') === '1';
 
     setReportSetting('report_title_template', titleTemplate);
@@ -99,7 +101,8 @@ export function updateReportSettings(req, res, next) {
         projects: clientProjects(),
         hasCompanyLogo: Boolean(settings.company_logo && fileExists(settings.company_logo)),
         notice: '',
-        error: error.message || 'Unable to update report settings.'
+        error: error.message || 'Unable to update report settings.',
+        selectedProjectId: null
       });
     } catch {
       next(error);
@@ -123,7 +126,7 @@ export function companyLogo(req, res, next) {
 }
 
 
-export function updateClientLogo(req, res, next) {
+export async function updateClientLogo(req, res, next) {
   try {
     const projectId = Number(req.body.project_id);
     if (!Number.isInteger(projectId) || projectId < 1) {
@@ -136,7 +139,7 @@ export function updateClientLogo(req, res, next) {
     );
     if (!project) throw new Error('Project was not found.');
 
-    const uploadedPath = req.file ? relativeUploadPath(req.file) : null;
+    const uploadedPath = req.file ? await normalizeUploadedLogo(req.file) : null;
     const removeLogo = String(req.body.remove_client_logo || '') === '1';
 
     if (!uploadedPath && !removeLogo) {
@@ -155,7 +158,7 @@ export function updateClientLogo(req, res, next) {
       deleteStoredUpload(project.logo);
     }
 
-    res.redirect('/settings/report?notice=' + encodeURIComponent('Client logo updated.'));
+    res.redirect('/settings/report?project_id=' + projectId + '&notice=' + encodeURIComponent('Client logo updated.'));
   } catch (error) {
     removeUploadedRequestFile(req);
     try {
@@ -166,7 +169,8 @@ export function updateClientLogo(req, res, next) {
         projects: clientProjects(),
         hasCompanyLogo: Boolean(settings.company_logo && fileExists(settings.company_logo)),
         notice: '',
-        error: error.message || 'Unable to update client logo.'
+        error: error.message || 'Unable to update client logo.',
+        selectedProjectId: Number(req.body?.project_id || 0) || null
       });
     } catch {
       next(error);

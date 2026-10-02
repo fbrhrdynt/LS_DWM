@@ -1,6 +1,6 @@
 {
   "name": "dwm",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "private": true,
   "type": "module",
   "description": "DWM - lightweight Node.js rewrite of the legacy Laravel application",
@@ -31,7 +31,8 @@
     "backup:prune": "node scripts/prune-backups.js",
     "reports:renumber": "node scripts/report-renumber.js",
     "pdf:check": "node scripts/pdf-layout-check.js",
-    "cleanup:release": "node scripts/cleanup-release-artifacts.js"
+    "cleanup:release": "node scripts/cleanup-release-artifacts.js",
+    "logos:normalize": "node scripts/normalize-logos.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -46,6 +47,7 @@
     "exceljs": "^4.4.0",
     "pdfkit": "^0.15.0",
     "nodemailer": "^7.0.6",
-    "archiver": "^7.0.1"
+    "archiver": "^7.0.1",
+    "sharp": "^0.34.4"
   }
 }

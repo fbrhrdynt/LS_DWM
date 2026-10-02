@@ -4,6 +4,7 @@ import { all, get, run, transaction } from '../config/db.js';
 import {
   deleteStoredUpload,
   relativeUploadPath,
+  normalizeUploadedLogo,
   removeUploadedRequestFile,
   resolveStoredUpload
 } from '../services/file-storage.js';
@@ -170,7 +171,7 @@ export function editProjectPage(req, res, next) {
   }
 }
 
-export function updateProject(req, res, next) {
+export async function updateProject(req, res, next) {
   let uploadedPath = null;
 
   try {
@@ -183,7 +184,7 @@ export function updateProject(req, res, next) {
     }
 
     const input = validateProjectInput(req.body);
-    uploadedPath = req.file ? relativeUploadPath(req.file) : null;
+    uploadedPath = req.file ? await normalizeUploadedLogo(req.file) : null;
     const removeLogo = String(req.body.remove_client_logo || '') === '1';
     const nextLogo = uploadedPath || (removeLogo ? null : existing.logo);
 
@@ -238,13 +239,13 @@ export function projectLogo(req, res, next) {
 
     const stored = resolveStoredUpload(project.logo);
     if (stored && fs.existsSync(stored)) {
-      res.setHeader('Cache-Control', 'private, max-age=300');
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
       return res.sendFile(stored);
     }
 
     const legacy = path.resolve('public', 'isi', 'logos', path.basename(String(project.logo)));
     if (fs.existsSync(legacy)) {
-      res.setHeader('Cache-Control', 'private, max-age=300');
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
       return res.sendFile(legacy);
     }
 

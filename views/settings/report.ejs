@@ -132,7 +132,7 @@
         <select name="project_id" required>
           <option value="">Select project</option>
           <% projects.forEach(project => { %>
-            <option value="<%= project.id_project %>">
+            <option value="<%= project.id_project %>" <%= Number(selectedProjectId || 0) === Number(project.id_project) ? 'selected' : '' %>>
               <%= project.operator_name || project.contract || `Project ${project.id_project}` %> · <%= project.drillingrig || '-' %>
             </option>
           <% }) %>
@@ -160,7 +160,7 @@
       <div class="client-logo-grid">
         <% projects.filter(project => project.logo).forEach(project => { %>
           <article>
-            <img src="/projects/<%= project.id_project %>/logo" alt="<%= project.operator_name || 'Client' %> logo">
+            <img src="/projects/<%= project.id_project %>/logo?v=<%= Date.now() %>" alt="<%= project.operator_name || 'Client' %> logo">
             <div>
               <strong><%= project.operator_name || project.contract %></strong>
               <span><%= project.drillingrig || '-' %></span>

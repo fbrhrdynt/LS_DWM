@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import multer from 'multer';
+import sharp from 'sharp';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,6 +54,40 @@ export const uploadInspection = uploadFactory('inspection', { limitMb: 5, extens
 export const uploadPmDocument = uploadFactory('pm-documents', { limitMb: 15, extensions: allowedDocumentExtensions });
 export const uploadCompanyLogo = uploadFactory('branding', { limitMb: 3, extensions: allowedImageExtensions });
 export const uploadProjectLogo = uploadFactory('project-logos', { limitMb: 3, extensions: allowedImageExtensions });
+
+
+export async function normalizeUploadedLogo(file) {
+  if (!file?.path) return null;
+
+  const source = path.resolve(file.path);
+  if (source.endsWith('-normalized.png')) {
+    return path.relative(uploadRoot, source).split(path.sep).join('/');
+  }
+  const parsed = path.parse(source);
+  const normalized = path.join(parsed.dir, `${parsed.name}-normalized.png`);
+
+  try {
+    await sharp(source, { failOn: 'none' })
+      .rotate()
+      .resize({
+        width: 1600,
+        height: 800,
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .png({ compressionLevel: 9, adaptiveFiltering: true })
+      .toFile(normalized);
+
+    if (normalized !== source) {
+      try { fs.rmSync(source, { force: true }); } catch {}
+    }
+
+    return path.relative(uploadRoot, normalized).split(path.sep).join('/');
+  } catch (error) {
+    try { fs.rmSync(normalized, { force: true }); } catch {}
+    throw new Error(`Unable to process logo image: ${error.message}`);
+  }
+}
 
 export function relativeUploadPath(file) {
   if (!file?.path) return null;

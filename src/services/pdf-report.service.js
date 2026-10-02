@@ -375,7 +375,7 @@ function drawHeader(doc, data, x, y, width) {
   const projectLogoName = project.logo ? String(project.logo) : '';
   const projectLogo = tryImageCentered(doc, [
     ...logoCandidates(projectLogoName, 'project-logos')
-  ], x + leftW + centerW, y, rightW, h, 82, 36);
+  ], x + leftW + centerW, y, rightW, h, 96, 38);
 
   if (!projectLogo) {
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(7)
@@ -386,7 +386,7 @@ function drawHeader(doc, data, x, y, width) {
       });
   }
 
-  return y + h;
+  return y + h + 7;
 }
 
 function drawWellInfo(doc, data, x, y, width) {
