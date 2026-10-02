@@ -137,7 +137,21 @@ function cell(doc, x, y, width, height, text, options = {}) {
   const content = fitText(doc, text, availableWidth, availableHeight, options);
 
   // Clip strictly to the current cell, but never auto-ellipsize labels/values.
-  // fitText reduces the font size until the complete text fits the row.
+  // Center table text vertically by default so headings and values sit midway
+  // between the upper and lower borders. Large free-text boxes can opt into top.
+  doc.font(options.bold ? 'Helvetica-Bold' : 'Helvetica');
+  const measuredHeight = Math.min(
+    availableHeight,
+    doc.heightOfString(content, {
+      width: availableWidth,
+      align: options.align || 'left',
+      lineGap: 0
+    })
+  );
+  const textY = options.valign === 'top'
+    ? y + padY
+    : y + Math.max(padY, (height - measuredHeight) / 2 - 0.15);
+
   doc.save();
   doc.rect(x + 0.25, y + 0.25, Math.max(0.5, width - 0.5), Math.max(0.5, height - 0.5)).clip();
   doc.fillColor(options.color || BLACK)
@@ -145,7 +159,7 @@ function cell(doc, x, y, width, height, text, options = {}) {
     .text(
       content,
       x + padX,
-      y + padY,
+      textY,
       {
         width: availableWidth,
         height: availableHeight,
@@ -188,9 +202,18 @@ function labelUnitCell(doc, x, y, width, height, label, unit = '', options = {})
     align: 'left',
     fallback: ''
   });
+  doc.font(options.bold ? 'Helvetica-Bold' : 'Helvetica');
+  const labelHeight = Math.min(
+    height - 2.2,
+    doc.heightOfString(labelText, { width: labelWidth, align: 'left', lineGap: 0 })
+  );
+  const labelY = options.valign === 'top'
+    ? y + 1.2
+    : y + Math.max(1.2, (height - labelHeight) / 2 - 0.1);
+
   doc.fillColor(options.color || BLACK)
     .font(options.bold ? 'Helvetica-Bold' : 'Helvetica')
-    .text(labelText, x + 2, y + 1.2, {
+    .text(labelText, x + 2, labelY, {
       width: labelWidth,
       height: height - 2.2,
       align: 'left',
@@ -199,14 +222,23 @@ function labelUnitCell(doc, x, y, width, height, label, unit = '', options = {})
     });
 
   if (cleanUnit) {
-    doc.font('Helvetica').fontSize(Math.max(3.7, fontSize - 0.15))
-      .text(cleanUnit, x + width - unitWidth - 2, y + 1.2, {
-        width: unitWidth,
-        height: height - 2.2,
-        align: 'right',
-        lineGap: 0,
-        ellipsis: false
-      });
+    const unitFontSize = Math.max(3.7, fontSize - 0.15);
+    doc.font('Helvetica').fontSize(unitFontSize);
+    const unitHeight = Math.min(
+      height - 2.2,
+      doc.heightOfString(cleanUnit, { width: unitWidth, align: 'right', lineGap: 0 })
+    );
+    const unitY = options.valign === 'top'
+      ? y + 1.2
+      : y + Math.max(1.2, (height - unitHeight) / 2 - 0.1);
+
+    doc.text(cleanUnit, x + width - unitWidth - 2, unitY, {
+      width: unitWidth,
+      height: height - 2.2,
+      align: 'right',
+      lineGap: 0,
+      ellipsis: false
+    });
   }
 
   doc.restore();
@@ -232,6 +264,7 @@ function row(doc, x, y, totalWidth, cells, options = {}) {
       lineWidth: item.lineWidth,
       padX: item.padX,
       padY: item.padY,
+      valign: item.valign,
       ellipsis: item.ellipsis
     };
 
@@ -387,7 +420,7 @@ function drawHeader(doc, data, x, y, width) {
       });
   }
 
-  return y + h + 7;
+  return y + h + 13;
 }
 
 function drawWellInfo(doc, data, x, y, width) {
@@ -767,7 +800,7 @@ function drawRetort(doc, data, x, y, width) {
     fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.95
   });
   cell(doc, rightX, rigTop + chartRowH, rightW, rigH - chartRowH, plain(a.rigactivity), {
-    align: 'left', fontSize: 4.25, padX: 3, padY: 3
+    align: 'left', valign: 'top', fontSize: 4.25, padX: 3, padY: 3
   });
 
   const postChartRows = [
@@ -850,7 +883,7 @@ function drawRetort(doc, data, x, y, width) {
     fill: GREEN, color: WHITE, bold: true, align: 'center', fontSize: 4.95
   });
   cell(doc, rightX, dwmTop + chartRowH, rightW, Math.max(chartRowH, leftBottom - dwmTop - chartRowH), plain(a.bssactivity), {
-    align: 'left', fontSize: 4.25, padX: 3, padY: 3
+    align: 'left', valign: 'top', fontSize: 4.25, padX: 3, padY: 3
   });
 
   return Math.max(leftBottom, dwmTop + chartRowH * 2);
