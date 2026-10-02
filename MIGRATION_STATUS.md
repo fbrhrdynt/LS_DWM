@@ -153,3 +153,12 @@ External SMTP/WebDAV credentials remain environment configuration only.
 - Corrected double-padding calculation in PDF text fitting.
 - Labels now shrink only as needed while preserving the complete text.
 - Added regression guard so automatic cell ellipsis cannot be reintroduced silently.
+
+
+## v0.8.6 Legacy parity
+
+- Restored legacy Centrifuge dropdowns for Model, Mode of Operation, Feed-in Suction, Effluent Return and Underflow.
+- Active Mud category labels now derive from fluid type exactly like the Laravel report logic.
+- Water-base fluids show MBT + Base Fluid; oil-base fluids show E-Stability + Oil/Water Ratio.
+- Restored exact legacy CF1 vs CF2/CF3 metric Mass Cake formulas.
+- Waste & Activity uses the same dynamic activity label as the PDF setting.

@@ -56,6 +56,30 @@ for (const prefix of ['cf1', 'cf2', 'cf3']) {
   assert.ok(Number.isFinite(Number(metric[`${prefix}_masscake`])));
 }
 
+// Exact legacy metric Mass Cake behavior (the old Laravel JS was intentionally inconsistent).
+{
+  const sample = {
+    cf1_feedinrate: 145,
+    cf1_feedindensity: 12,
+    cf1_centratedens: 13,
+    cf1_cakediscdens: 12.9,
+    cf1_runninghour: 35
+  };
+  const cf1Metric = calculateCentrifuge('cf1', sample, 'm3');
+  close(cf1Metric.cf1_cakediscflow, 1450);
+  close(cf1Metric.cf1_masscake, 27496350, 0.1);
+
+  const cf2Metric = calculateCentrifuge('cf2', {
+    cf2_feedinrate: 145,
+    cf2_feedindensity: 12,
+    cf2_centratedens: 13,
+    cf2_cakediscdens: 12.9,
+    cf2_runninghour: 35
+  }, 'm3');
+  close(cf2Metric.cf2_cakediscflow, 1450);
+  close(cf2Metric.cf2_masscake, 785614.10, 0.1);
+}
+
 // DESANDER / DESILTER.
 const solids = calculateSolidsControl({
   run_hour: 2,

@@ -290,3 +290,12 @@ DWM now includes final migration and production-readiness tooling: notifications
 - Retort/Centrifuge units are rendered inside the parameter cell without a separate unit grid column.
 - Recovery and Engineer rows align directly beside the Company Activities block.
 - `npm run cleanup:release` removes old root ZIP release artifacts and obsolete v0.6.2/v0.7 deployment notes.
+
+
+## v0.8.6 Legacy parity
+
+- Restored legacy Centrifuge dropdowns for Model, Mode of Operation, Feed-in Suction, Effluent Return and Underflow.
+- Active Mud category labels now derive from fluid type exactly like the Laravel report logic.
+- Water-base fluids show MBT + Base Fluid; oil-base fluids show E-Stability + Oil/Water Ratio.
+- Restored exact legacy CF1 vs CF2/CF3 metric Mass Cake formulas.
+- Waste & Activity uses the same dynamic activity label as the PDF setting.

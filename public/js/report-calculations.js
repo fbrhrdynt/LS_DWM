@@ -71,7 +71,7 @@
     } else {
       massCake = prefix === 'cf1'
         ? ((cakeFlow * 42) * cakeDensity) * runningHour
-        : (runningHour !== 0 ? (massMton / runningHour) / 0.45359237 * 1000 : 0);
+        : (runningHour !== 0 ? (massMton / runningHour) / 0.45359 * 1000 : 0);
       volCake = volCakeBbl / BBL_PER_M3;
     }
 

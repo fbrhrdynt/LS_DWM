@@ -220,6 +220,56 @@
           </table>
         </div>
       </section>
+    <% } else if (sectionId === 'amp') { %>
+      <section class="panel edit-section">
+        <div class="section-heading">
+          <div>
+            <h2>Active Mud Properties</h2>
+            <p class="muted">
+              <% if (activeMudMeta?.code) { %>
+                Category labels are derived by the server from <strong><%= activeMudMeta.fluidName || activeMudMeta.code %></strong>; they are not separate editable category names.
+              <% } else { %>
+                Set Mud Check Type / Fluid Type in Well Data first so the legacy category mapping can be applied.
+              <% } %>
+            </p>
+          </div>
+        </div>
+
+        <div class="form-grid report-form-grid active-mud-grid">
+          <label><span>PV <small>(cps)</small></span><input name="pv" type="number" step="any" value="<%= data.pv ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+          <label><span>YP <small>(lbs/100 ft²)</small></span><input name="yp" type="number" step="any" value="<%= data.yp ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+          <label><span>Sand Content</span><input name="sandcontent" type="number" step="any" value="<%= data.sandcontent ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+          <label><span>Base Fluid <small>(%)</small></span><input name="basefluid" type="number" step="any" value="<%= data.basefluid ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+          <label><span>SG Drill Solid / Cutting <small>(sp.gr)</small></span><input name="sgdrillsolid" type="number" step="any" value="<%= data.sgdrillsolid ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+          <label><span>Chlorides <small>(mg/L)</small></span><input name="chlorides" type="number" step="any" value="<%= data.chlorides ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>></label>
+          <label>
+            <span>Mud Temperature</span>
+            <div class="input-with-unit-select">
+              <input name="mudtemp" type="number" step="any" value="<%= data.mudtemp ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+              <select name="tempunit" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+                <option value="degc" <%= data.tempunit === 'degc' ? 'selected' : '' %>>°C</option>
+                <option value="degf" <%= data.tempunit === 'degf' ? 'selected' : '' %>>°F</option>
+              </select>
+            </div>
+          </label>
+
+          <% if (activeMudMeta?.water) { %>
+            <label>
+              <span>MBT <small>(lb/bbl)</small></span>
+              <input name="categories2" type="number" step="any" value="<%= data.categories2 ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+            </label>
+          <% } else { %>
+            <label>
+              <span>Oil / Water Ratio</span>
+              <input name="categories1" value="<%= data.categories1 ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+            </label>
+            <label>
+              <span>E-Stability <small>(Volt)</small></span>
+              <input name="categories2" type="number" step="any" value="<%= data.categories2 ?? '' %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
+            </label>
+          <% } %>
+        </div>
+      </section>
     <% } else if (sectionId === 'shakers') { %>
       <section class="panel edit-section">
         <div class="section-heading">
@@ -353,8 +403,13 @@
                 }
               }
             %>
+              <% let visibleLabel = field.label;
+                 if (field.name === 'bssactivity') visibleLabel = reportSettings?.pdf_activity_label || 'BSS Activity';
+                 if (/_masscake$/.test(field.name)) visibleLabel = `Mass Wet Discharge / Day (${String(calcContext.details?.volholeunit || '').includes('bbl') ? 'M/Ton' : 'Lbs'})`;
+                 if (/_volcake$/.test(field.name)) visibleLabel = `Volume Cake Discharge (${calcContext.details?.volholeunit || 'bbls'})`;
+              %>
               <label class="<%= field.type === 'textarea' ? 'full-field' : '' %>">
-                <span><%= field.label %> <% if (field.calculated) { %><span class="auto-chip">Auto</span><% } %></span>
+                <span><%= visibleLabel %> <% if (field.calculated) { %><span class="auto-chip">Auto</span><% } %></span>
 
                 <% if (field.type === 'textarea') { %>
                   <textarea
@@ -366,8 +421,11 @@
                 <% } else if (field.type === 'select') { %>
                   <select name="<%= field.name %>" <%= report.lockreport === 'YES' ? 'disabled' : '' %>>
                     <option value="">—</option>
-                    <% (field.options || []).forEach(option => { %>
-                      <option value="<%= option %>" <%= String(current) === String(option) ? 'selected' : '' %>><%= option %></option>
+                    <% (field.options || []).forEach(option => {
+                      const optionValue = option && typeof option === 'object' ? option.value : option;
+                      const optionLabel = option && typeof option === 'object' ? option.label : option;
+                    %>
+                      <option value="<%= optionValue %>" <%= String(current) === String(optionValue) ? 'selected' : '' %>><%= optionLabel %></option>
                     <% }) %>
                   </select>
                 <% } else { %>

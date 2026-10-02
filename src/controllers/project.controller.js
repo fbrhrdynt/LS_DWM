@@ -10,6 +10,7 @@ import {
 } from '../services/file-storage.js';
 import { deleteProjectTree } from '../services/relational-cleanup.service.js';
 import { formatReportNumber } from '../services/report-sequence.js';
+import { getReportSettings } from '../services/report-settings.service.js';
 
 const PROJECT_MANAGERS = new Set(['MASTER', 'Supervisor']);
 
@@ -364,6 +365,7 @@ export function reportDetail(req, res, next) {
       dailyWaste,
       personnel,
       additional,
+      reportSettings: getReportSettings(),
       notice: clean(req.query.notice, 300)
     });
   } catch (error) {

@@ -63,3 +63,12 @@ SMTP requires credentials to send reset emails. WebDAV requires ownCloud/WebDAV 
 - PDF Engineer and Company Activity headings configurable from Settings.
 - Retort and Centrifuge unit columns merged into the parameter cell; blank units no longer render `-`.
 - Recovery/Engineer block begins immediately after Retort while Company Activities continues alongside it, removing the large blank area.
+
+
+## v0.8.6 Legacy parity
+
+- Restored legacy Centrifuge dropdowns for Model, Mode of Operation, Feed-in Suction, Effluent Return and Underflow.
+- Active Mud category labels now derive from fluid type exactly like the Laravel report logic.
+- Water-base fluids show MBT + Base Fluid; oil-base fluids show E-Stability + Oil/Water Ratio.
+- Restored exact legacy CF1 vs CF2/CF3 metric Mass Cake formulas.
+- Waste & Activity uses the same dynamic activity label as the PDF setting.

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 import { getReportSettings, buildReportTitle } from './report-settings.service.js';
 import { formatReportNumber } from './report-sequence.js';
+import { activeMudDisplayValues, fluidTypeName, resolveFluidCode } from './fluid-category.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -396,7 +397,7 @@ function drawWellInfo(doc, data, x, y, width) {
     ['Well Name', plain(report.wellname), 'Depth 1 Day Before', withUnit(details.depth1bef, 'feet'), 'Spud-in Date', dateText(report.spud_date)],
     ['Location', plain(report.location), '% Washout', withUnit(details.washout, '%'), 'Bit Size (inch)', plain(details.bitsize)],
     ['Operator Rep', plain(report.companyman), 'Vol Hole Drilled', withUnit(details.volholedrill, plain(details.volholeunit)), 'Bit Type', plain(details.bittype)],
-    ['Contractor Rep', plain(report.oim), 'Fluids Type', fluidType(details.fluidtype), 'Avg. ROP for Drlg Hrs', plain(details.avgrop)],
+    ['Contractor Rep', plain(report.oim), 'Fluids Type', fluidTypeName(resolveFluidCode(details)), 'Avg. ROP for Drlg Hrs', plain(details.avgrop)],
     ['Drilling Rig', plain(project.drillingrig), 'Activity', plain(details.rigpresentact), 'Circulating Rate', withUnit(details.cirrategpm, 'gpm')]
   ];
 
@@ -416,10 +417,13 @@ function drawWellInfo(doc, data, x, y, width) {
 
 function drawActiveMud(doc, data, x, y, width) {
   const d = data.details;
-  const labels = fluidCategoryLabels(d.fluidtype);
-  const water = ['WB-SW', 'WB-WB', 'WB-WBH'].includes(d.fluidtype);
-  const result1 = water ? d.categories2 : d.categories1;
-  const result2 = water ? d.basefluid : d.categories2;
+  const category = activeMudDisplayValues(d);
+  const labels = {
+    left: `${category.primary.label}${category.primary.unit ? ` (${category.primary.unit})` : ''}`,
+    right: `${category.secondary.label}${category.secondary.unit ? ` (${category.secondary.unit})` : ''}`
+  };
+  const result1 = category.primaryValue;
+  const result2 = category.secondaryValue;
 
   y = row(doc, x, y, width, [
     greenCell('A C T I V E   M U D   P R O P E R T I E S', 100, { fontSize: 6.2, border: false })

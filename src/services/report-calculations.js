@@ -1,5 +1,6 @@
 const BBL_PER_M3 = 6.2898;
-const LB_PER_KG = 1 / 0.45359237;
+const LEGACY_KG_PER_LB = 0.45359237;
+const LEGACY_KG_PER_LB_SHORT = 0.45359;
 
 function num(value) {
   if (value === null || value === undefined || value === '') return 0;
@@ -55,21 +56,25 @@ export function calculateCentrifuge(prefix, input = {}, volholeunit = 'bbls') {
     : 0;
   const centrateReturn = feedInRate - cakeFlow;
   const volCakeBbl = runningHour * (cakeFlow * 60 / 42);
-  const massCakeMton = (((cakeFlow * 42) * cakeDensity) * 0.45359237 / 1000) * runningHour;
 
-  let massCake;
-  let volCake;
+  // This reproduces the Laravel JavaScript exactly. Do not normalize CF1/CF2/CF3:
+  // the old application used different metric Mass Cake behavior for CF1 vs CF2/CF3.
+  const massCakeMton = (((cakeFlow * 42) * cakeDensity) * LEGACY_KG_PER_LB / 1000) * runningHour;
+
+  let massCake = 0;
+  let volCake = volCakeBbl;
 
   if (isBblUnit(volholeunit)) {
     massCake = massCakeMton;
-    volCake = volCakeBbl;
   } else {
-    // Legacy CF1 calculated total lb, while CF2/CF3 showed lb/hr-equivalent.
-    // Preserve each original formula to keep historical behavior identical.
     if (prefix === 'cf1') {
+      // Legacy CF1: total wet discharge in lb over the entered running hours.
       massCake = ((cakeFlow * 42) * cakeDensity) * runningHour;
     } else {
-      massCake = runningHour !== 0 ? (massCakeMton / runningHour) * LB_PER_KG * 1000 : 0;
+      // Legacy CF2/CF3: the old script converted massMton/runningHour with 0.45359.
+      massCake = runningHour !== 0
+        ? (massCakeMton / runningHour) / LEGACY_KG_PER_LB_SHORT * 1000
+        : 0;
     }
     volCake = volCakeBbl / BBL_PER_M3;
   }

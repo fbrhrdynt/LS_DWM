@@ -9,6 +9,8 @@ import {
 import { deleteReportTree } from '../services/relational-cleanup.service.js';
 import { nextReportDate, nextReportNumber, formatReportNumber } from '../services/report-sequence.js';
 import { recalculateReportDerivedFields } from '../services/report-recalculation.service.js';
+import { getReportSettings } from '../services/report-settings.service.js';
+import { FLUID_TYPE_OPTIONS, activeMudCategoryMeta } from '../services/fluid-category.service.js';
 
 const REPORT_TABLES = [
   'details',
@@ -22,6 +24,37 @@ const REPORT_TABLES = [
 ];
 
 const MANAGER_LEVELS = new Set(['MASTER', 'Supervisor']);
+
+
+const CENTRIFUGE_MODEL_OPTIONS = Object.freeze([
+  { value: '7200VFD', label: 'DE-7200 VFD' },
+  { value: '1000FHD', label: 'DE-1000 FHD' },
+  { value: '1000VFD', label: 'DE-1000 VFD' },
+  { value: '1000GBD', label: 'DE-1000 GBD' },
+  { value: '1000FRDRYER', label: 'DE-1000 fr DRYER' },
+  { value: 'HNH', label: 'CENTRIFUGE H&H' },
+  { value: 'CSI', label: 'CENTRIFUGE CSI' }
+]);
+
+const CENTRIFUGE_MODE_OPTIONS = Object.freeze([
+  { value: 'FRDREYR', label: 'FR DRYER' },
+  { value: 'SLDREMOVAL', label: 'SOLID REMOVAL' },
+  { value: 'BARITE', label: 'BARITE RECOVERY' }
+]);
+
+const CENTRIFUGE_FLOW_DESTINATIONS = Object.freeze([
+  'INTERMEDIATETANK',
+  'SANDTRAPTANK',
+  'ACTIVETANK',
+  'HOLDINGTANK',
+  'CUTTINGSKIPS',
+  'OVERBOARD'
+]);
+
+const CENTRIFUGE_UNDERFLOW_DESTINATIONS = Object.freeze([
+  ...CENTRIFUGE_FLOW_DESTINATIONS,
+  'JUMBOBAG'
+]);
 
 function todayLocal() {
   const timeZone = process.env.APP_TIMEZONE || 'Asia/Jakarta';
@@ -73,7 +106,7 @@ const SECTION_DEFS = {
       title: 'Well information',
       description: 'Drilling and active-system values used throughout the report.',
       fields: [
-        field('mudcheck_type', 'Mud check type'),
+        field('mudcheck_type', 'Mud check type', 'select', { options: FLUID_TYPE_OPTIONS }),
         field('depth_each', 'Depth unit', 'select', { options: ['feet', 'metre'] }),
         field('depth1bef', 'Previous depth', 'number'),
         field('bitsize', 'Bit size', 'number'),
@@ -90,7 +123,7 @@ const SECTION_DEFS = {
         field('cirrategpm', 'Circulation rate (GPM)', 'number'),
         field('hgsactive', 'HGS active', 'number'),
         field('sgbasefluid', 'SG base fluid', 'number'),
-        field('fluidtype', 'Fluid type'),
+        field('fluidtype', 'Fluid type', 'select', { options: FLUID_TYPE_OPTIONS }),
         field('rigpresentact', 'Rig present activity', 'textarea', { max: 500 }),
         field('activesysvol', 'Active system volume', 'number')
       ]
@@ -109,8 +142,8 @@ const SECTION_DEFS = {
         field('chlorides', 'Chlorides', 'number'),
         field('mudtemp', 'Mud temperature', 'number'),
         field('tempunit', 'Temperature unit'),
-        field('categories1', 'Category'),
-        field('categories2', 'Category value', 'number'),
+        field('categories1', 'Oil / Water Ratio'),
+        field('categories2', 'MBT / E-Stability', 'number'),
         field('sgdrillsolid', 'SG drill solids', 'number')
       ]
     }]
@@ -206,14 +239,14 @@ function centrifugeSection(n) {
       title: `Centrifuge ${n}`,
       fields: [
         field(`${p}_sn`, 'Serial number'),
-        field(`${p}_model`, 'Model'),
-        field(`${p}_modeofopr`, 'Mode of operation'),
+        field(`${p}_model`, 'Model', 'select', { options: CENTRIFUGE_MODEL_OPTIONS }),
+        field(`${p}_modeofopr`, 'Mode of operation', 'select', { options: CENTRIFUGE_MODE_OPTIONS }),
         field(`${p}_weirplate`, 'Weir plate', 'number'),
         field(`${p}_bowlspeed`, 'Bowl speed', 'number'),
         field(`${p}_bowlconv`, 'Bowl conveyor', 'number'),
-        field(`${p}_feedsuc`, 'Feed suction'),
-        field(`${p}_effluentreturn`, 'Effluent return'),
-        field(`${p}_underflow`, 'Underflow'),
+        field(`${p}_feedsuc`, 'Feed-in Suction From', 'select', { options: CENTRIFUGE_FLOW_DESTINATIONS }),
+        field(`${p}_effluentreturn`, 'Effluent Return To', 'select', { options: CENTRIFUGE_FLOW_DESTINATIONS }),
+        field(`${p}_underflow`, 'Underflow Discharge To', 'select', { options: CENTRIFUGE_UNDERFLOW_DESTINATIONS }),
         field(`${p}_runninghour`, 'Running hour', 'number'),
         field(`${p}_feedinrate`, 'Feed-in rate', 'number'),
         field(`${p}_feedindensity`, 'Feed-in density', 'number'),
@@ -221,8 +254,8 @@ function centrifugeSection(n) {
         field(`${p}_cakediscdens`, 'Cake discharge density', 'number'),
         field(`${p}_centratereturn`, 'Centrate return', 'number', { calculated: true }),
         field(`${p}_cakediscflow`, 'Cake discharge flow', 'number', { calculated: true }),
-        field(`${p}_masscake`, 'Mass cake', 'number', { calculated: true }),
-        field(`${p}_volcake`, 'Volume cake', 'number', { calculated: true })
+        field(`${p}_masscake`, 'Mass Wet Discharge / Day', 'number', { calculated: true }),
+        field(`${p}_volcake`, 'Volume Cake Discharge', 'number', { calculated: true })
       ]
     }]
   };
@@ -237,7 +270,7 @@ function cuttingDryerSection(n) {
       title: `Cutting Dryer ${n}`,
       fields: [
         field(`${p}_sn`, 'Serial number'),
-        field(`${p}_model`, 'Model'),
+        field(`${p}_model`, 'Model', 'select', { options: CENTRIFUGE_MODEL_OPTIONS }),
         field(`${p}_screensize`, 'Screen size', 'number'),
         field(`${p}_runninghour`, 'Running hour', 'number'),
         field(`${p}_centrateppg`, 'Centrate PPG', 'number'),
@@ -411,8 +444,13 @@ function normalizeValue(raw, meta) {
     return hours * 60 + minutes;
   }
 
-  if (meta.type === 'select' && Array.isArray(meta.options) && !meta.options.includes(text)) {
-    throw new InputError(`${meta.label} contains an unsupported value.`);
+  if (meta.type === 'select' && Array.isArray(meta.options)) {
+    const allowed = meta.options.map(option =>
+      option && typeof option === 'object' ? String(option.value) : String(option)
+    );
+    if (!allowed.includes(text)) {
+      throw new InputError(`${meta.label} contains an unsupported value.`);
+    }
   }
 
   return text.slice(0, meta.max || 255);
@@ -559,6 +597,8 @@ export function reportEditor(req, res, next) {
       sections: SECTION_ORDER,
       data,
       calcContext: calculationContext(wellId),
+      activeMudMeta: activeMudCategoryMeta(data),
+      reportSettings: getReportSettings(),
       notice: String(req.query.notice || '').slice(0, 300),
       error: null
     });
@@ -664,6 +704,8 @@ export function saveReportSection(req, res, next) {
         sections: SECTION_ORDER,
         data: { ...calculatedFormData(sectionId, section, wellId, context.report), ...req.body },
         calcContext: calculationContext(wellId),
+        activeMudMeta: activeMudCategoryMeta({ ...calculationContext(wellId).details, ...req.body }),
+        reportSettings: getReportSettings(),
         notice: '',
         error: error.message
       });
